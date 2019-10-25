@@ -1,19 +1,11 @@
-# Multi Color Blob Tracking Example
-#
-# This example shows off multi color blob tracking using the OpenMV Cam.
+#This runs on the OpenMV H7
+
 
 import sensor, image, time, math
 
-# Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
-# The below thresholds track in general red/green things. You may wish to tune them...
-#thresholds = [(50, 100, 69, 127, -128, 127), # red_thresholds
-#              (50, 100, -128, 127, -128, -38)] # blue
-#thresholds = [(75, 100, -128, 2, -128, 127), # blue
-              #(64, 100, 14, 127, -128, 127)] # red
+
 thresholdRed = [(64, 100, 14, 127, -128, 127)]
 thresholdBlue = [(75, 100, -128, 2, -128, 127)]
-# You may pass up to 16 thresholds above. However, it's not really possible to segment any
-# scene with 16 thresholds before color thresholds start to overlap heavily.
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
