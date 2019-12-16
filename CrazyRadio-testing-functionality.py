@@ -1,8 +1,9 @@
-#!/bin/8python3
+#!/bin/env python3
 
 import logging
 import time
 import cflib.crtp
+import random
 from cflib.crazyflie import Crazyflie
 from cflib.utils.callbacks import Caller
 
@@ -20,10 +21,14 @@ pitch = 0.0
 yawrate = 0
 thrust = 0
 
-for i in range(5):
-    print("IN THE LOOP")
+for i in range(1000):
+    print("Sending Setpoint", (roll, pitch, yawrate, thrust))
     crazyflie.commander.send_setpoint(0,0,0,0)
     crazyflie.commander.send_setpoint(roll,pitch,yawrate,10001+i)
-    time.sleep(0.5)
+    roll = random.random()
+    pitch = random.random()
+    yawrate = random.random()
+    thrust = 10000*random.random()
+    time.sleep(0.001)
 
 crazyflie.close_link()
