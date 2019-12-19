@@ -1,33 +1,30 @@
-#!/bin/env python3
+class LandingPlatformController():
+    cameraMidpoint = [0, 0, 0]
+    
+    def __init__(self, UAV=None):
+        self._uav = UAV
+        self._uavPos = [-1, -1, -1]
 
-import logging
-import time
-import cflib.crtp
-import random
+    def _getUAVPosition(self):
+        #Need to figure out serial data
+        pass
 
-from cflib.crazyflie import Crazyflie
-from cflib.utils.callbacks import Caller
-from cflib.positioning.motion_commander import MotionCommander
-from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
+    def _calculateOffset(self):
+        offset = [0, 0, 0]
+        curPosition = _getUAVPosition()
+        offset[0] = curPosition[0] - cameraMidPoint[0]
+        offset[1] = curPosition[1] - cameraMidPoint[1]
+        offset[2] = curPosition[2] - cameraMidPoint[2]
+        return offset
 
-cflib.crtp.init_drivers()
-available = cflib.crtp.scan_interfaces()
-for i in available:
-    print("Interface with URI [%s] found and name/comment [%s]" % (i[0], i[1]))
+    def _sendMovement(self):
+        pass
 
-crazyflie = Crazyflie()
-#crazyflie.connected.add_callback(crazyflie_connected)
-if(len(available) > 0):
+    def _performLandingSequence(self):
+        pass
 
-    with SyncCrazyflie(available[0][0]) as scf:
-        with MotionCommander(scf) as UAV:
-            UAV.up(1, 0.2)
-            time.sleep(1)
-            UAV.down(1, 0.2)
+    def _getBatteryLevel(self):
+        
+        pass
     
     
-else:
-    print("ERROR: Unable to find anything")
-
-
-
