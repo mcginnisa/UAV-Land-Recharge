@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# This script installs Crazyflie libraries from Bitcraze AB's GitHub repo and ensures 
+#    that udev rules & permissions are configured for complete workstation setup. 
+#
+# Author: Joseph Haun, Sonoma State University
+
 
 if [ $EUID -ne 0 ]; then
     echo "This script requires root permissions. Use sudo -H"
