@@ -14,7 +14,7 @@ class UAVController():
     def __init__(self):
         self.timeout = True
         self.available = []
-        self.UAV = None
+        self.UAV = Crazyflie()
         self.param = None
         self.connected = False
         
@@ -28,40 +28,54 @@ class UAVController():
                 break #If a UAV is found via scanning, break out of this loop
             else:
                 self.available = cflib.crtp.scan_interfaces()
-                print("Still searching...", _)
             
-        self.UAV = Crazyflie()
-        
+
         if(len(self.available) > 0):
+            self.UAV.open_link(self.available[0][0])
+            while(self.UAV.is_connected() == False): time.sleep(0.1)
+            self.MC = MotionCommander(self.UAV)
+            #Create desired logging parameters
             self.logForUAV = LogConfig(name = "UAVLog", period_in_ms=1000)
-            print("Check 1")
             self.logForUAV.add_variable('pm.batteryLevel', 'float')
-            print("Check 2")
             self.logForUAV.add_variable('stateEstimate.x', 'float')
-            print("Check 3")
             self.logForUAV.add_variable('stateEstimate.y', 'float')
-            print("Check 4")
-            """Add more variables here for logging as desired"""
-            self.UAVLog = SyncCrazyflie(self.available[0][0])
-            self.UAVLog = SyncLogger(self.UAVLog, self.logForUAV)
-            print("Check 5")
+            #Add more variables here for logging as desired
             
+                #with SyncLogger(SyncObject, self.logForUAV) as LogObject:
+                #    self.UAVLogObject = LogObject
+        
         #End of function
-    
-    def launch(self):
+
+    def done(self):
         """
-        Function: launch
-        Purpose: manually connect the UAV so that any automated processes are avoided on system startup
+        Function: done
+        Purpose: Close connection to UAV to terminate all threads running
         Inputs: none
         Outputs: none
         """
-        if(self.timeout == False):
-            #self.UAV = MotionCommander(self.UAVLog)
-            self.connected = True
-        else:
-            self.connected = False #Send to logs that a connection failed
-            
+        self.UAV.close_link()
+        self.connected = False
+        
+    def launch(self):
+        """
+        Function: launch
+        Purpose: Instruct the UAV to takeoff from current position to the default height
+        Inputs: none
+        Outputs: none
+        """
+        self.connected == True
+        self.MC.take_off()
         #End of function
+        return
+
+    def land(self):
+        """
+        Function: launch
+        Purpose: Instruct the UAV to land on the ground at current position
+        Inputs: none
+        Outputs: none
+        """
+        self.MC.land()
         return
     
     def move(self, distanceX, distanceY, distanceZ, velocity):
@@ -75,7 +89,7 @@ class UAVController():
         if(self.connected == False):
             self.launch()
 
-        self.UAV.move_distance(distanceX, distanceY, distanceZ, velocity)
+        self.MC.move_distance(distanceX, distanceY, distanceZ, velocity)
         #End of function
         return
 
@@ -87,9 +101,9 @@ class UAVController():
         Outputs: none
         """
         if(degree < 0):
-            self.UAV.turn_right(abs(degree))
+            self.MC.turn_right(abs(degree))
         else:
-            self.UAV.turn_left(degree)
+            self.MC.turn_left(degree)
         #End of function
         return
         
@@ -103,9 +117,3 @@ class UAVController():
         
         #End of function
         return
-
-if True:
-    UAV = UAVController()
-    print("TESTED")
-    UAV.launch()
-    print("TRIED AND TRUE")
