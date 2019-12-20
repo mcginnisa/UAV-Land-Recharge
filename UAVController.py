@@ -34,11 +34,17 @@ class UAVController():
         
         if(len(self.available) > 0):
             self.logForUAV = LogConfig(name = "UAVLog", period_in_ms=1000)
+            print("Check 1")
             self.logForUAV.add_variable('pm.batteryLevel', 'float')
+            print("Check 2")
             self.logForUAV.add_variable('stateEstimate.x', 'float')
+            print("Check 3")
             self.logForUAV.add_variable('stateEstimate.y', 'float')
+            print("Check 4")
             """Add more variables here for logging as desired"""
-            self.UAVLog = MotionCommander(SyncLogger(SyncCrazyflie(self.available[0][0]), self.logForUAV))
+            self.UAVLog = SyncCrazyflie(self.available[0][0])
+            self.UAVLog = SyncLogger(self.UAVLog, self.logForUAV)
+            print("Check 5")
             
         #End of function
     
