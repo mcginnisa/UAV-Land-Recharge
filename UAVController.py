@@ -1,14 +1,15 @@
-class UAVController():
-    import logging
-    import time
+import logging
+import time
 
-    import cflib.crtp
-    from cflib.crazyflie import Crazyflie
-    from cflib.utils.callbacks import Caller
-    from cflib.positioning.motion_commander import MotionCommander
-    from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
-    from cflib.crazyflie.syncLogger import SyncLogger
-    from cflib.crazyflie.log import LogConfig
+import cflib.crtp
+from cflib.crazyflie import Crazyflie
+from cflib.utils.callbacks import Caller
+from cflib.positioning.motion_commander import MotionCommander
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
+from cflib.crazyflie.syncLogger import SyncLogger
+from cflib.crazyflie.log import LogConfig
+    
+class UAVController():
     
     def __init__(self):
         self.timeout = True
@@ -22,25 +23,26 @@ class UAVController():
 
         #Attempt to locate UAV by scanning available interface
         for _ in range(0,500): 
-            if(len(available > 0)):
+            if(len(self.available) > 0):
                 self.timeout = False
                 break #If a UAV is found via scanning, break out of this loop
             else:
                 self.available = cflib.crtp.scan_interfaces()
             pass
 
-        self.logForUAV = LogConfig(name = "UAVLog", period_in_ms=1000)
-        self.logForUAV.add_variable('pm.batteryLevel', 'float')
-        self.logForUAV.add_variable('stateEstimate.x', 'float')
-        self.logForUAV.add_variable('stateEstimate.y', 'float')
-        #Add more variables here for logging as desired
-        self.UAVLog = SyncLogger(SyncCrazyflie(available[0][0]), self.logForUAV)
-                
+        if(len(self.available) > 0):
+            self.logForUAV = LogConfig(name = "UAVLog", period_in_ms=1000)
+            self.logForUAV.add_variable('pm.batteryLevel', 'float')
+            self.logForUAV.add_variable('stateEstimate.x', 'float')
+            self.logForUAV.add_variable('stateEstimate.y', 'float')
+            Add more variables here for logging as desired
+            self.UAVLog = SyncLogger(SyncCrazyflie(self.available[0][0]), self.logForUAV)
+           
         #End of function
     
-    def connect(self):
+    def launch(self):
         """
-        Function: connect
+        Function: launch
         Purpose: manually connect the UAV so that any automated processes are avoided on system startup
         Inputs: none
         Outputs: none
@@ -54,95 +56,20 @@ class UAVController():
         #End of function
         return
     
-    def up(self, distance, velocity):
+    def move(self, distanceX, distanceY, distanceZ, velocity):
         """
         Function: up
-        Purpose: A wrapper function to instruct an UAV upwards
+        Purpose: A wrapper function to instruct an UAV to move <x, y, z> distance from current point
         Inputs: distance - a floating point value distance in meters
                 velocity - a floating point value velocity in meters per second
         Outputs: none
         """
         if(self.connected == False):
-            self.connect()
+            self.launch()
 
-        self.UAV.up(distance, velocity)
+        self.UAV.move_distance(distanceX, distanceY, distanceZ, velocity)
         #End of function
-        pass
-
-    def down(self, distance, velocity):
-        """
-        Function: down
-        Purpose: A wrapper function to instruct an UAV downwards
-        Inputs: distance - a floating point value distance in meters
-                velocity - a floating point value velocity in meters per second
-        Outputs: none
-        """
-        if(self.connected == False):
-            self.connect()
-
-        self.UAV.down(distance, velocity)
-        #End of function
-        pass
-
-    def left(self, distance, velocity):
-        """
-        Function: left
-        Purpose: A wrapper function to instruct an UAV left
-        Inputs: distance - a floating point value distance in meters
-                velocity - a floating point value velocity in meters per second
-        Outputs: none
-        """
-        if(self.connected == False):
-            self.connect()
-
-        self.UAV.left(distance, velocity)
-        #End of function
-        pass
-
-    def right(self, distance, velocity):
-        """
-        Function: right
-        Purpose: A wrapper function to instruct an UAV right
-        Inputs: distance - a floating point value distance in meters
-                velocity - a floating point value velocity in meters per second
-        Outputs: none
-        """
-        if(self.connected == False):
-            self.connect()
-
-        self.UAV.right(distance, velocity)
-        #End of function
-        pass
-
-    def forward(self, distance, velocity):
-        """
-        Function: forward
-        Purpose: A wrapper function to instruct an UAV forwards
-        Inputs: distance - a floating point value distance in meters
-                velocity - a floating point value velocity in meters per second
-        Outputs: none
-        """
-        if(self.connected == False):
-            self.connect()
-
-        self.UAV.forward(distance, velocity)
-        #End of function
-        pass
-
-    def backward(self, distance, velocity):
-        """
-        Function: backward
-        Purpose: A wrapper function to instruct an UAV backwards
-        Inputs: distance - a floating point value distance in meters
-                velocity - a floating point value velocity in meters per second
-        Outputs: none
-        """
-        if(self.connected == False):
-            self.connect()
-            
-        self.UAV.backward(distance, velocity)
-        #End of function
-        pass
+        return
 
     def rotate(self, degree):
         """
@@ -155,6 +82,8 @@ class UAVController():
             self.UAV.turn_right(abs(degree))
         else:
             self.UAV.turn_left(degree)
+        #End of function
+        return
         
     def getBatteryLevel(self):
         """
@@ -165,4 +94,8 @@ class UAVController():
         """
         
         #End of function
-        pass
+        return
+
+if True:
+    UAV = UAVController()
+    UAV.launch()
