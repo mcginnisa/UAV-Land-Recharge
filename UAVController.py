@@ -22,22 +22,24 @@ class UAVController():
         foundUAV = False
 
         #Attempt to locate UAV by scanning available interface
-        for _ in range(0,500): 
+        for _ in range(0,500):
             if(len(self.available) > 0):
                 self.timeout = False
                 break #If a UAV is found via scanning, break out of this loop
             else:
                 self.available = cflib.crtp.scan_interfaces()
-            pass
-
+                print("Still searching...", _)
+            
+        self.UAV = Crazyflie()
+        
         if(len(self.available) > 0):
             self.logForUAV = LogConfig(name = "UAVLog", period_in_ms=1000)
             self.logForUAV.add_variable('pm.batteryLevel', 'float')
             self.logForUAV.add_variable('stateEstimate.x', 'float')
             self.logForUAV.add_variable('stateEstimate.y', 'float')
-            Add more variables here for logging as desired
-            self.UAVLog = SyncLogger(SyncCrazyflie(self.available[0][0]), self.logForUAV)
-           
+            """Add more variables here for logging as desired"""
+            self.UAVLog = MotionCommander(SyncLogger(SyncCrazyflie(self.available[0][0]), self.logForUAV))
+            
         #End of function
     
     def launch(self):
@@ -48,7 +50,7 @@ class UAVController():
         Outputs: none
         """
         if(self.timeout == False):
-            self.UAV = MotionCommander(self.UAVLog)
+            #self.UAV = MotionCommander(self.UAVLog)
             self.connected = True
         else:
             self.connected = False #Send to logs that a connection failed
@@ -98,4 +100,6 @@ class UAVController():
 
 if True:
     UAV = UAVController()
+    print("TESTED")
     UAV.launch()
+    print("TRIED AND TRUE")
