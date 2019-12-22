@@ -77,7 +77,7 @@ while True:
         continue
     #now lets see if the commands we are sending are actually moving it
     distance = get_distance(coords,first_coords)
-    if distance > 10: #if this is true, thats the drone were moving
+    #if distance > 10: #if this is true, thats the drone were moving
 
 
     print(distance)
