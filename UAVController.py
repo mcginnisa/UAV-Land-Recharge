@@ -1,23 +1,34 @@
+import logging
+import time
+
+import cflib.crtp
+from cflib.crazyflie import Crazyflie
+from cflib.positioning.motion_commander import MotionCommander
+from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
+from cflib.crazyflie.syncLogger import SyncLogger
+from cflib.crazyflie.log import LogConfig
+        
 class UAVController():
+    """
     import logging
     import time
 
     import cflib.crtp
     from cflib.crazyflie import Crazyflie
-    from cflib.utils.callbacks import Caller
     from cflib.positioning.motion_commander import MotionCommander
     from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
     from cflib.crazyflie.syncLogger import SyncLogger
-    from cflib.crazyflie.log import LogConfig
-    
+    """
     def __init__(self):
+
+        cflib.crtp.init_drivers()
+     
         self.timeout = True
         self.available = []
         self.UAV = Crazyflie()
         self.param = None
         self.connected = False
         
-        cflib.crtp.init_drivers()
         foundUAV = False
 
         #Attempt to locate UAV by scanning available interface
@@ -33,14 +44,13 @@ class UAVController():
             while(self.UAV.is_connected() == False): time.sleep(0.1)
             self.MC = MotionCommander(self.UAV)
             #Create desired logging parameters
-            self.logForUAV = LogConfig(name = "UAVLog", period_in_ms=1000)
-            self.logForUAV.add_variable('pm.batteryLevel', 'float')
-            self.logForUAV.add_variable('stateEstimate.x', 'float')
-            self.logForUAV.add_variable('stateEstimate.y', 'float')
+            self.UAVLogConfig = LogConfig(name = "UAVLog", period_in_ms=1000)
+            self.UAVLogConfig.add_variable('pm.batteryLevel', 'float')
+            self.UAVLogConfig.add_variable('stateEstimate.x', 'float')
+            self.UAVLogConfig.add_variable('stateEstimate.y', 'float')
             #Add more variables here for logging as desired
             
-                #with SyncLogger(SyncObject, self.logForUAV) as LogObject:
-                #    self.UAVLogObject = LogObject
+
         
         #End of function
 
@@ -112,6 +122,11 @@ class UAVController():
         Inputs: degree - a floating point value in degrees
         Outputs: none
         """
-        
+        retVal = []
+        with SyncLogger(self.UAV, self.UAVLogConfig) as LogObject:
+            self.UAVLogObject = LogObject
+            retVal = LogObject.next()[1].get('pm.batteryLevel')
+                            
         #End of function
-        return
+        return retVal
+    
