@@ -122,7 +122,7 @@ class UAVController():
         """
         Function: getBatteryLevel
         Purpose: A wrapper function to grab the battery voltage
-        Inputs: degree - a floating point value in degrees
+        Inputs: none
         Outputs: none
         """
         retVal = []
