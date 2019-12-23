@@ -9,7 +9,7 @@
 import math
 
 # Define camera parameters
-FOCAL_LENGTH = 0.00265	# focal length of camera, in meters
+FOCAL_LENGTH = 0.00265	# focal length of lens, in meters
 X_IMAGE = 0.003984      # sensor size, x, in meters, per datasheet
 Y_IMAGE = 0.002952	# sensor size, y, in meters, per datasheet
 X_SENSOR = 656		# sensor size, x, in pixels, per datasheet
@@ -17,14 +17,13 @@ Y_SENSOR = 488	      	# sensor size, y, in pixels, per datasheet
 X_ACTIVE = 640		# active sensors, x, in pixels, per datasheet
 Y_ACTIVE = 480		# active sensors, y, in pixels, per datasheet
 OFFSET_ORIGIN = True	# if pixel origin differs from world origin
-X_RANGE = 320		# frame size, x, in pixels
-Y_RANGE = 240		# frame size, y, in pixels
+
+X_RANGE = 320		# frame size, x, in pixels, per selected camera mode
+Y_RANGE = 240		# frame size, y, in pixels, per selected camera mode
 
 # determine dimensions (in meters) of individual pixels (ps = pixelsize)
-x_ps = X_IMAGE/X_SENSOR
-x_ps = x_ps*(X_ACTIVE/X_RANGE)
-y_ps = Y_IMAGE/Y_SENSOR
-y_ps = y_ps*(Y_ACTIVE/Y_RANGE)
+x_ps = (X_IMAGE/X_SENSOR)*(X_ACTIVE/X_RANGE)
+y_ps = (Y_IMAGE/Y_SENSOR)*(Y_ACTIVE/Y_RANGE)
 
 #  xy offset of world origin (assumed image center) from pixel origin
 x_off = 0
