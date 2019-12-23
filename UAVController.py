@@ -71,7 +71,7 @@ class UAVController():
         Inputs: none
         Outputs: none
         """
-        self.connected == True
+        self.connected = True  # s/b self.airborne, e.g.? - AA
         self.MC.take_off()
         #End of function
         return
@@ -94,7 +94,7 @@ class UAVController():
                 velocity - a floating point value velocity in meters per second
         Outputs: none
         """
-        if(self.connected == False):
+        if(self.connected == False):  # var name to change? -AA
             self.launch()
 
         self.MC.move_distance(distanceX, distanceY, distanceZ, velocity)
@@ -108,6 +108,9 @@ class UAVController():
         Inputs: degree - a floating point value in degrees
         Outputs: none
         """
+        
+        ### insert airborne check here - AA
+        
         if(degree < 0):
             self.MC.turn_right(abs(degree))
         else:
