@@ -9,17 +9,14 @@ from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.crazyflie.log import LogConfig
         
 class UAVController():
-    """
-    import logging
-    import time
 
-    import cflib.crtp
-    from cflib.crazyflie import Crazyflie
-    from cflib.positioning.motion_commander import MotionCommander
-    from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
-    from cflib.crazyflie.syncLogger import SyncLogger
-    """
     def __init__(self):
+        """
+        Function: __init__
+        Purpose: Initialize all necessary UAV functionality
+        Inputs: none
+        Outputs: none
+        """
 
         cflib.crtp.init_drivers()
      
