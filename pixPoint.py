@@ -20,7 +20,7 @@ Y_ACTIVE = 480		# active sensors, y, in pixels, per datasheet
 OFFSET_ORIGIN = True	# if pixel origin differs from world origin
 
 # Needs to be updated for selected camera mode and frame cropping
-X_RANGE = 320		# frame size, x, in pixels, per selected camera mode
+X_RANGE = 240		# frame size, x, in pixels, per selected camera mode
 Y_RANGE = 240		# frame size, y, in pixels, per selected camera mode
 
 # determine dimensions (in meters) of individual pixels (ps = pixelsize)
@@ -47,8 +47,8 @@ def pixelPoint(x_pixel, y_pixel, distance, focal, x_pix_off, y_pix_off, x_pix_si
    return x,y;
 
 # example coordinates
-a = 269         # x pixel
-b = 49         # y pixel
+a = 200         # x pixel
+b = 50        # y pixel
 z = 0.9           # distance, in meters
 
 # example function call
