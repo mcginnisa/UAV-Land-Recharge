@@ -51,7 +51,7 @@ if __name__ == '__main__':
                     for row in setpoint_file:
                         float_list = [float(i) for i in row]
                         for y in range(5): #this routine takes half a second
-                            # print('test')
+                            print(float_list[3])
                             cf.commander.send_hover_setpoint(*float_list)
                             time.sleep(0.1)
             else:
