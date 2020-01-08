@@ -40,26 +40,18 @@ FILE="/etc/udev/rules.d/99-crazyradio.rules"
 touch $FILE
 
 echo "$SCRIPTNAME: Inserting CrazyRadio udev rules."
-if [ -f $FILE ]; then
-    echo "$SCRIPTNAME: CrazyRadio udev rules already present."
-else
-    VAL='SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="7777", MODE="0664", GROUP="plugdev"'
-    echo $VAL >> $FILE
-    VAL='SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="0101", MODE="0664", GROUP="plugdev"'
-    echo $VAL >> $FILE
-fi
-
+VAL='SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="7777", MODE="0664", GROUP="plugdev"'
+echo $VAL >> $FILE
+VAL='SUBSYSTEM=="usb", ATTRS{idVendor}=="1915", ATTRS{idProduct}=="0101", MODE="0664", GROUP="plugdev"'
+echo $VAL >> $FILE
 
 #Creates a rules file for the CrazyFlie drone and updates it with correct permissions
 echo "$SCRIPTNAME: Creating CrazyFlie udev rules."
 FILE="/etc/udev/rules.d/99-crazyflie.rules"
 touch $FILE
-if [ -f $FILE ]; then
-    echo "$SCRIPTNAME: Crazyflie udev rules already present."
-else
-    echo "$SCRIPTNAME: Inserting CrazyFlie udev rules."
-    VAL='SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", MODE="0664", GROUP="plugdev"'
-    echo $VAL >> $FILE
-fi
+
+echo "$SCRIPTNAME: Inserting CrazyFlie udev rules."
+VAL='SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", MODE="0664", GROUP="plugdev"'
+echo $VAL >> $FILE
 
 echo "$SCRIPTNAME: Setup complete. A system reset/user logout will be needed to update udev permissions."
