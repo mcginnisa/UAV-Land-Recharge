@@ -1,4 +1,3 @@
-from UAVController import UAVController
 import serial
 import sys
 import glob
@@ -22,7 +21,7 @@ class LandingPlatformController():
         if(UAV == None):
             print("ERROR: Landing Platform Controller requires a UAV control object")
             
-        #Define class constants
+        #Define class constants necessary for 
         self._uav = UAV
         self._uavVelocity = velocity #Find out default velocity
         self._hoverHeight = hoverHeight
@@ -198,13 +197,3 @@ class LandingPlatformController():
                 pass
         #End of Function
         return availablePorts
-
-import time
-    
-if True:
-    TestUAV = UAVController()
-    print("UAV Added?", dir(TestUAV))
-    Test = LandingPlatformController(UAV=TestUAV)
-    Test._performLandingSequence()
-    print("Success!")
-    
