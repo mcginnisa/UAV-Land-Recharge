@@ -50,8 +50,11 @@ if __name__ == '__main__':
                     setpoint_file = csv.reader(csvfile)
                     for row in setpoint_file:
                         float_list = [float(i) for i in row]
+                        if float_list[3] == 0: #if height is 0, cut the motors
+                            print('quitting')
+                            quit()
                         for y in range(5): #this routine takes half a second
-                            print(float_list[3])
+                            #print(float_list[3])
                             cf.commander.send_hover_setpoint(*float_list)
                             time.sleep(0.1)
             else:

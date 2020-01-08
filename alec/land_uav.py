@@ -4,10 +4,16 @@ import time
 import numpy as np
 import re
 import math
+from pixPoint import pixelPoint
 
-initial_height = 0.4
+initial_height = 0.6
+landing_height = 0.25
 
-target_coords = [240/2-30,240/2]
+#target_coords = [240/2-30,240/2]
+initial_target_coords = [240/2,240/2] #edge of screen on the right (port facing down)
+landing_target_coords = [20,240/2] #edge of screen on the right (port facing down)
+
+init_mov_scale = 0.3
 
 # target_coords = [30,230]
 # target_coords = [12,64]
@@ -39,7 +45,7 @@ def get_camera_cache(range=cache_size):
         for row in reader_object:
             string_list = [str(i) for i in row]
         return string_list[-range:]
-
+''' # old get_coords
 def get_coords(range=cache_size):
     coord_list_str = get_camera_cache(range)
     if any("error" in s for s in coord_list_str):
@@ -56,6 +62,27 @@ def get_coords(range=cache_size):
     if len(x_coords) == 0:
         return [900,900]
     return [np.mean(x_coords),np.mean(y_coords)]
+'''
+def get_coords(range=cache_size):
+    coord_list_str = get_camera_cache(range)
+    x_coords = []
+    y_coords = []
+    #print(coord_list_str)
+    for coord in coord_list_str:
+        xcoord = int(coord.split('$')[0])
+        ycoord = int(coord.split('$')[1])
+        if xcoord == 901: #if the coord is a 901 error, immediately report it
+            return [901,901]
+        if not 0 <= xcoord <= 700: #if the coord isn't within this range, we got a problem
+            continue
+        x_coords.append(xcoord)
+        y_coords.append(ycoord)
+
+    #if there are no coords in this list return nothing found code (900)
+    if len(x_coords) == 0:
+        return [900,900]
+
+    return [np.mean(x_coords),np.mean(y_coords)]
 
 def get_height():
     with open('setpoint.txt','r') as csvfile:
@@ -63,6 +90,7 @@ def get_height():
         for row in setpoint_file:
             float_list = [float(i) for i in row]
             height = float_list[3]
+            print("this is the height1: " + str(height))
             return height
 
 def write_setpoint(dx=0,dy=0,rotate_by_this=0,target_height=0):
@@ -70,10 +98,12 @@ def write_setpoint(dx=0,dy=0,rotate_by_this=0,target_height=0):
         setpoint_file = csv.writer(csvfile)
         setpoint_file.writerow([dx,dy,rotate_by_this,target_height])
 
-def move_uav(direction_vec=[0,0],rot_deg_ccw=0,height=get_height(),speed=0.3):
+def move_uav(direction_vec=[0,0],rot_deg_ccw=0,height=-1,speed=0.3):
+    if height == -1:
+        height=get_height()
     # print(direction_vec)
     # print(rot_deg_ccw)
-    # print(height)
+    print("this is the height2: " + str(height))
     # print(speed)
     length = np.linalg.norm(direction_vec)
     if not length == 0: #catch divide by zero cases
@@ -83,7 +113,7 @@ def move_uav(direction_vec=[0,0],rot_deg_ccw=0,height=get_height(),speed=0.3):
     x_dir = normalized_vec[0]
     y_dir = normalized_vec[1]
     write_setpoint(*[x_dir*speed,y_dir*speed,rot_deg_ccw,height])
-    #print('speed =' + str(speed))
+    print([x_dir*speed,y_dir*speed,rot_deg_ccw,height])
     time.sleep(2)
 
 # def rot_uav(degrees_ccw):
@@ -136,9 +166,10 @@ def get_move_speed(target_move_vec):
 
 
 # def get_camera_cache():
-move_uav(direction_vec=[0,0],rot_deg_ccw=0,height=0.6,speed=0.3) #set default height
+move_uav(height=initial_height) #set default height
+target_coords = initial_target_coords
 # land_softly()
-
+scaling = 1
 while True:
     time.sleep(0.5)
     reverse = 0
@@ -147,30 +178,34 @@ while True:
     if first_coords[0] >= 900: #if there are errors try again
         print('errors or no lock')
         continue
+    #if there is no error, calculate "move vector" starting from uav and pointing at target
     target_move_vec = np.subtract(target_coords,first_coords)
-    move_uav(direction_vec=target_move_vec,speed=get_move_speed(target_move_vec)) #inch forward in x axis
+    #inch forward in the direction of the move vector
+    move_uav(direction_vec=target_move_vec,speed=get_move_speed(target_move_vec)*scaling)
     print('moving')
     # time.sleep(1)
     coords = get_coords() #get new coords after that is done
     print(coords)
+    # if the blob tracked by the camera didn't move, we are tracking a false positive, try the loop again
     if get_distance(coords,first_coords) < 6.9:
         print('didnt move')
         continue
     if coords[0] == 900: #if we left the frame, come back
         print('left frame')
-        move_uav(direction_vec=-target_move_vec,speed=0.45) #inch forward in x
+        move_uav(direction_vec=-target_move_vec,speed=0.45*scaling) #move reverse of move_vec
         # time.sleep(1)
         coords = get_coords()
         print(coords)
-        reverse = 1 #include this so that we know the real actual_move_vec
+        reverse = 1 #include this so that we know the real actual_move_vec, so we can calculate delta theta
     if coords[0] >= 900: #if there are errors try again
         continue
-    #now lets see if the commands we are sending are actually moving it
+    #check again if the blob is actually moving
     distance = get_distance(coords,first_coords)
     print('distance moved:' + str(distance))
     if distance > 10: #if this is true, thats the drone we're moving
         print('rotating')
         actual_move_vec = np.subtract(coords,first_coords)
+        #if had to use -target_move_vec, negate the error angle too
         if reverse:
             actual_move_vec = -actual_move_vec
         delta_theta = -1*get_delta_theta(actual_move_vec,target_move_vec)
@@ -178,11 +213,20 @@ while True:
         print('rotated by' + str(delta_theta))
     else:  #if the coord didn't move, we are tracking a false positive
         continue
+    #if the current coords are close to the initial target coords, switch to phase 2
+    if np.allclose(coords,initial_target_coords,atol=7) and \
+        get_height() == initial_height:
+        move_uav(height=landing_height)
+        target_coords = landing_target_coords
+        scaling = 0.5
+        print('beginning stage 2')
 
-
-    if np.allclose(coords,target_coords,atol=7):
+    #if current coords are close to landing target coords, land and exit
+    if np.allclose(coords,landing_target_coords,atol=12) and \
+        get_height() == landing_height:
         print('reached target')
-        land_softly()
+        #land_softly()
+        move_uav(height=0)
         break
 
     print('reached end, not there yet, starting over')

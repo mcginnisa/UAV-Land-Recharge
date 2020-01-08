@@ -14,7 +14,7 @@ while True:
     # time.sleep(0.1)
     s = str(s)
     message = s[s.find("{")+1:s.find("}")]
-    # print(message)
+    print(message)
     if len(cache) < cache_size:
         cache.append(message)
     else:
