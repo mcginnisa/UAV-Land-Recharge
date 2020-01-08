@@ -86,7 +86,7 @@ class UAVController():
     
     def move(self, distanceX, distanceY, distanceZ, velocity):
         """
-        Function: up
+        Function: move
         Purpose: A wrapper function to instruct an UAV to move <x, y, z> distance from current point
         Inputs: distance - a floating point value distance in meters
                 velocity - a floating point value velocity in meters per second
@@ -131,4 +131,3 @@ class UAVController():
                             
         #End of function
         return retVal
-    
