@@ -2,13 +2,14 @@ import serial
 import sys
 import glob
 import math
+import time
 
 class LandingPlatformController():
     
-    def __init__(self, UAV=None, cameraInitValue='{900$900}\r\n', hoverHeight=0.3, velocity=0.1, serialLimiters=['{','%','}']):
+    def __init__(self, UAV=None, cameraInitValue='{900$900}\r\n', hoverHeight=0.3, velocity=0.1, serialLimiters=['{','$','}']):
         """
-        Function: _getUAVPosition
-        Purpose: Get the most up-to-date UAV position in rectangular coordinates
+        Function: __init__
+        Purpose: Setup the LandingPlatformController class
         Inputs: UAV - a UAV controller object that is able to direct a relevant UAV
                 cameraInitValue - a string denoting the default value that should be present on the serial connection representing the camera
                 hoverHeight - a floating point value denoting a minimum height in meters to hover
@@ -25,8 +26,9 @@ class LandingPlatformController():
         self._uav = UAV
         self._uavVelocity = velocity #Find out default velocity
         self._hoverHeight = hoverHeight
+        self._minHoverHeight = hoverHeight - hoverHeight/10
         self._uavPos = [-1, -1, -1]
-        self._landingPos = [-1, -1, -1] #Will need to be defined somehow
+        self._landingPos = [0.2, 0.2, 0] #A set of world coordinates that needs to be defined somehow
         self._cameraInitValue = cameraInitValue
         self._serialLimiters = serialLimiters
 
@@ -44,7 +46,9 @@ class LandingPlatformController():
         self._yOff = self._yRange/2 #Offset value in the y dimension
         
         #Define/Manage Serial connection
-        self._camera = serial.Serial(self._getCameraSerialConnection(cameraInitValue))
+        self._camera = None
+        while(self._getCameraSerialConnection(cameraInitValue) == None):{"""Do Nothing"""}
+        self._camera = serial.Serial(port=self._getCameraSerialConnection(cameraInitValue))
 
     def _getUAVPosition(self):
         """
@@ -53,26 +57,31 @@ class LandingPlatformController():
         Inputs: None
         Outputs: curPosition - an array of floating point values representing <x, y, z>
         """
+        if(self._camera == None):
+            return 
         
         #Get update height
         self._uavPos[2] = self._uavGetHeight()
+
         #Flush serial buffer to insure that most recent data points are grabbed
         self._camera.reset_input_buffer()
-        #Create blank string to add values
-        positionString=""
-        #Find the first limiter value to begin grabbing a data point
-        while(self._camera.read(1).decode('ascii') != self._serialLimiters[0]): {""" Do nothing """}
-        #Find the third limiter which denotes the end of a data point
-        while(self._camera.read(1).decode('ascii') != self._serialLimiters[2]):
-            positionString = positionString + self._camera.read(1).decode('ascii')
-        #Find the second limiter inside the given string to split the string into necessary x and y portions
-        splitIndex=positionString.rfind(self._serialLimiters[1])
+        
+        #Read serial data until the limiting character is found or until the number of bytes equals the default string
+        posString = self._camera.read_until(self._serialLimiters[2], len(self._cameraInitValue)).decode('ascii')
+        posString = posString[posString.find(self._serialLimiters[0]):posString.find(self._serialLimiters[2])+1]
+
+        #Find the limiter positions to properly split string into x & y components
+        initIndex=posString.rfind(self._serialLimiters[0])
+        splitIndex=posString.rfind(self._serialLimiters[1])
+        lastIndex=posString.rfind(self._serialLimiters[2])
+
         #Convert the parsed values from serial connection to integers and pass to pixel conversion function
-        self._uavPos[0], self._uavPos[1] = self._pixelConversion(int(positionString[:splitIndex]), int(positionString[(splitIndex+1):]), self._uavPos[2])
-
+        self._uavPos[0], self._uavPos[1] = self._pixelConversion(int(posString[(initIndex+1):splitIndex]), int(posString[(splitIndex+1):lastIndex]), self._uavPos[2])
+        
         return
+        #return int(posString[(initIndex+1):splitIndex]), int(posString[(splitIndex+1):lastIndex]), self._uavPos[2], initIndex, splitIndex, lastIndex, posString
 
-    def _pixelConversion(x_pixel, y_pixel, distance):
+    def _pixelConversion(self, x_pixel, y_pixel, distance):
         """
         Function: _pixelConversion
         Purpose: Convert pixel coordinates into world coordinates
@@ -111,25 +120,40 @@ class LandingPlatformController():
         Inputs: None
         Outputs: a floating point value representing the z-coordinate 
         """
+        #Might want to figure out how to read UAV height from logs as this is a terrible way to go about it. 
         return self._hoverHeight
 
-    def _sendMovement(self, xPos, yPos, zPos):
+    def _sendMovement(self, xDis, yDis, zDis):
         """
         Function: _sendMovement
         Purpose: Instruct the UAV to move to certain coordinates
-        Inputs: xPos - a floating point value denoting the new x position, in meters, to move towards
-                yPos - a floating point value denoting the new y position, in meters, to move towards
-                zPos - a floating point value denoting the new z position, in meters, to move towards
+        Inputs: xDis - a floating point value to move in the x-dimension, in meters
+                yDis - a floating point value to move in the y-dimension , in meters
+                zDis - a floating point value to move in the z-dimension, in meters
         Outputs: None
         """
-        distances = [(self._uavPos[0] - xPos), (self._uavPos[1] - yPos), (self._uavPos[2] - zPos) ]
-        if(distances[2] != 0):
-            self._hoverHeight = zPos
-        self._uav.move(distances[0], distances[1], distances[2], self._uavVelocity)
-        pass
-
+        self._uav.move(xDis, yDis, zDis, self._uavVelocity)
+        #Update hover height
+        self._hoverHeight += zDis
+        
+        return
+    
     def engageFlightRoutine(self):
-        pass
+        self._sendMovement(0, 0, 0.5)
+        time.sleep(10)
+        self._sendMovement(0.25,0,0)
+        time.sleep(5)
+        self._sendMovement(-0.25,0,-0.2)
+        time.sleep(5)
+        self._performLandingSequence()
+        return
+
+    def done(self):
+        if(self._hoverHeight >= self._minHoverHeight):
+            self._uav.land()
+        self._uav.done()
+        self._camera.close()
+        return
     
     def _performLandingSequence(self):
         """
@@ -138,12 +162,25 @@ class LandingPlatformController():
         Inputs: None
         Outputs: None
         """
-        #curPosition = self._getUAVPosition()
-        self._uav.launch()
-        self._uav.move(0,0,0.5,0.05)
-        self._uav.land()
-        self._uav.done()
-        pass
+        #While UAV is still flying (height >= min)
+        #Get UAV position reported by camera 
+        #Calculate distance vector from landing point
+        #Move UAV along distance vector
+        #  While UAV is moving, stall landing procedure
+        #Repeat procedure
+
+        offsetVector = None
+        while((self._hoverHeight >= self._minHoverHeight) or (offsetVector != 0)):
+            self._getUAVPosition()
+            offset = self._calculateOffset()
+            print("LPC: Offset =", offset)
+            #Calculate offset vector for potential time delay needs
+            offsetVector = math.sqrt(math.pow(offset[0],2) + math.pow(offset[1],2) + math.pow(offset[3],2))
+            #Calculate delay time
+            delayTime = offsetVector/self._uavVelocity
+            
+            
+        return
 
     def _getBatteryLevel(self):        
         pass
