@@ -17,16 +17,20 @@ def signalHandler(sig, frame):
 def main():
     global UAV
     signal.signal(signal.SIGINT, signalHandler)
-    print("Attempting to connect to UAV")
+    print("MAIN: Attempting to connect to UAV")
     while(UAV == None):
         UAV = UAVController()
-    print("UAV Connected, Initializing Landing Platform Controller")
+    print("MAIN: UAV Connected, Initializing Landing Platform Controller")
     LPC = None
     while(LPC == None):
         LPC = LandingPlatformController(UAV)
-    print("Landing Platform Controller Initialized")
-    while(True):
-        time.sleep(0.1)
+    print("MAIN: Landing Platform Controller Initialized")
+    LPC.engageFlightRoutine()
+    LPC.done()
+    #UAV.launch()
+    #while(True):
+    #    print("MAIN:", LPC._calculateOffset())
+    #    time.sleep(0.5)
     
 if __name__ == "__main__":
     main()
