@@ -1,4 +1,3 @@
-
 import logging
 import time
 import sys
@@ -63,6 +62,10 @@ if __name__ == '__main__':
                     height = get_height()
                 except:
                     height = 0.4
+                if not isinstance(height, float):
+                    height = 0.4
+                    print("not a float this time")
+                    print(height)
                 cf.commander.send_hover_setpoint(0, 0, 0, height)
                 time.sleep(0.1)
                         #* means interpret list as arguments

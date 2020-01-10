@@ -174,7 +174,7 @@ while True:
     time.sleep(0.5)
     reverse = 0
     first_coords = get_coords()
-    print(first_coords)
+    #print(first_coords)
     if first_coords[0] >= 900: #if there are errors try again
         print('errors or no lock')
         continue
