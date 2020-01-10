@@ -26,6 +26,8 @@ def main():
         LPC = LandingPlatformController(UAV)
     print("MAIN: Landing Platform Controller Initialized")
     LPC.engageFlightRoutine()
+    while(True):
+        print("MAIN:", LPC._getUAVPosition())
     LPC.done()
     #UAV.launch()
     #while(True):
