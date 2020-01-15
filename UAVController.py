@@ -111,10 +111,14 @@ class UAVController():
             self.launch()
         
         if(degree < 0):
+            print("UC: rotate - Going Right")
             self.MC.turn_right(abs(degree))
         else:
-            self.MC.turn_left(degree)
-        #End of function
+            print("UC: rotate - Going Left")
+            self.MC.turn_left(abs(degree))
+
+        #Delay by 1 second, to allow for total rotation time
+        time.sleep(1)
         return
         
     def getBatteryLevel(self):
