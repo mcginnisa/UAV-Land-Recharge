@@ -29,11 +29,11 @@ class LandingPlatformController():
         self._hoverHeight = hoverHeight
         self._minHoverHeight = hoverHeight - hoverHeight/10
         self._uavPos = [-1, -1, -1]
-        self._landingPos = [0, 0, 0] #A set of world coordinates that needs to be defined somehow
+        self._landingPos = [0.1, 0, 0] #A set of world coordinates that needs to be defined somehow
         self._cameraInitValue = cameraInitValue
         self._serialLimiters = serialLimiters
         self._cameraAccuracy = 50 #Number of points the camera will sample each pass
-        self._uavLandingAccuracy = 0.01 #The magnitude a offset vector needs to overcome to be considered valid
+        self._uavLandingAccuracy = 0.1 #The magnitude a offset vector needs to overcome to be considered valid
 
         #Define constants to allow for pixel to world coordinate conversion
         self._focalLength = 0.00265 #focal length of lens in meters, per datasheet
@@ -267,15 +267,16 @@ class LandingPlatformController():
                 while(self._uavInFrame() == False):
                     self._sendMovement(-offset[0]*offsetRedux, -offset[1]*offsetRedux, 0)
                     
-                    temp = self._getUAVPosition()
-                    endPos = temp.copy()
-                    print("LPC: _performLandingSequence - startPos =", startPos)
-                    print("LPC: _performLandingSequence - Offset =", offset)
-                    print("LPC: _performLandingSequence - expecetdPos =", expectedPos)
-                    print("LPC: _performLandingSequence - endPos =", endPos)
-                    self._alignUAV(startPos, expectedPos, endPos)
-                    while(self._uavInFrame() == False):
-                        self._sendMovement(0,0,math.fabs(offset[2]*0.05))
+                temp = self._getUAVPosition()
+                endPos = temp.copy()
+                print("LPC: _performLandingSequence - offsetMagnitude =", offsetMagnitude)
+                print("LPC: _performLandingSequence - startPos =", startPos)
+                print("LPC: _performLandingSequence - Offset =", offset)
+                print("LPC: _performLandingSequence - expecetdPos =", expectedPos)
+                print("LPC: _performLandingSequence - endPos =", endPos)
+                self._alignUAV(startPos, expectedPos, endPos)
+                while(self._uavInFrame() == False):
+                    self._sendMovement(0,0,math.fabs(offset[2]*0.05))
             #Otherwise, move the UAV in the -Z direction
             else:
                 self._sendMovement(0, 0, 0.1*offset[2]) 
