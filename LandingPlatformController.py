@@ -17,24 +17,29 @@ class LandingPlatformController():
                 velocity - a floating point value indicating the velocity in meters per second the UAV will travel at
                 serialLimiters - an array of strings that denote the limiting characters/strings for the serial data
         Outputs: None
+        Description:
         """
         
         #Define/Manage UAV connection
         if(UAV == None):
             print("ERROR: Landing Platform Controller requires a UAV control object")
             
-        #Define class constants necessary for 
+        #Define class constants necessary for UAV 
         self._uav = UAV
         self._uavVelocity = velocity
         self._hoverHeight = hoverHeight
         self._minHoverHeight = hoverHeight - hoverHeight/10
         self._uavPos = [-1, -1, -1]
-        self._landingPos = [0.1, 0, 0] #A set of world coordinates that needs to be defined somehow
-        self._cameraInitValue = cameraInitValue
-        self._serialLimiters = serialLimiters
-        self._cameraAccuracy = 50 #Number of points the camera will sample each pass
-        self._uavLandingAccuracy = 0.1 #The magnitude a offset vector needs to overcome to be considered valid
+        self._landingPos = [0.07, 0, 0] #A set of world coordinates that needs to be defined somehow
+        self._uavOffsetAngle = 0 #in radians
 
+        #Define class tolerance/accuracy values
+        self._cameraAccuracy = 10 #Number of points the camera will sample each pass
+        self._uavLandingTolerance = 0.1 #The magnitude a offset vector needs to overcome to be considered valid
+        self._coordTolerance = 0.05 #Value used to determine if a new coordinate transform is necessary
+        self._onTargetFactor = 12 #An integer value that determines the factor of the logarithmic function that determines if the UAV is on target
+        self._onTargetOffset = 1.8 #A floating point value that determines the height offset
+        
         #Define constants to allow for pixel to world coordinate conversion
         self._focalLength = 0.00265 #focal length of lens in meters, per datasheet
         self._xImage = 0.003984 #sensor x-size in meters, per datasheet
@@ -50,6 +55,8 @@ class LandingPlatformController():
         
         #Define/Manage Serial connection
         self._camera = None
+        self._cameraInitValue = cameraInitValue
+        self._serialLimiters = serialLimiters
         while(self._getCameraSerialConnection(cameraInitValue) == None):{"""Do Nothing"""}
         self._camera = serial.Serial(port=self._getCameraSerialConnection(cameraInitValue))
 
@@ -59,6 +66,7 @@ class LandingPlatformController():
         Purpose: Get the most up-to-date UAV position in rectangular coordinates
         Inputs: None
         Outputs: None
+        Description:
         """
         if(self._camera == None):
             return 
@@ -74,16 +82,18 @@ class LandingPlatformController():
         
         #Flush serial buffer to insure that most recent data points are grabbed
         self._camera.reset_input_buffer()
-
-        #Workaround currently
-        #Until the last value in the initial value is found, read characters
-        while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
-           
+   
         for i in range(0, int(self._cameraAccuracy)):
+            #Workaround currently
+            #Until the last value in the initial value is found, read characters
+            while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
+        
             #Read serial data for largest possible string length from camera
             posString = self._camera.read(len(self._cameraInitValue)).decode('ascii')
+            #Throw away any characters after the final limiter value
             posString = posString[posString.find(self._serialLimiters[0]):posString.find(self._serialLimiters[2])+1]
-
+            print("LPC:  _getUAVPosition - posString =", posString)
+        
             if(len(posString) > 0):
                 if(posString[0] == '{'):                    
                     #Find the limiter positions to properly split string into x & y components
@@ -121,7 +131,13 @@ class LandingPlatformController():
         return self._uavPos
 
     def _uavInFrame(self):
-
+        """
+        Function: _uavInFrame
+        Purpose: Determine if the UAV is within the frame of the camera
+        Inputs: None
+        Outputs: a boolean value indicating if the UAV is within the frame
+        Description:
+        """
         #Find the default value for the camera, this indicates non-detectionx
         xValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[0])+1:self._cameraInitValue.rfind(self._serialLimiters[1])])
         
@@ -133,14 +149,18 @@ class LandingPlatformController():
         self._camera.reset_input_buffer()
         
         #Workaround currently
-        #Until the last value in the initial value is found, read characters
-        while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
+       #Until the last value in the initial value is found, read characters
+#        while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
 
         for i in range(0, int(self._cameraAccuracy*0.2)): #Will need to worry about this if twenty percent of accuracy is less than one
+            #Workaround currently
+            #Until the last value in the initial value is found, read characters
+            while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
+            
             #Read serial data for largest possible string length from camera
             posString = self._camera.read(len(self._cameraInitValue)).decode('ascii')
             posString = posString[posString.find(self._serialLimiters[0]):posString.find(self._serialLimiters[2])+1]
-
+            
             #If a proper position string was grabbed, process it
             if(len(posString) > 0):
                 if(posString[0] == '{'):                    
@@ -174,6 +194,7 @@ class LandingPlatformController():
         Outputs: a tuple of x,y
                  x - a floating point value denoting the x-coordinate of the UAV in the world frame
                  y - a floating point value denoting the y-coordinate of the UAV in the world frame
+        Description:
         """
         k = distance/self._focalLength
         xPixSize = 2*(self._xImage/self._xSensor)
@@ -185,12 +206,12 @@ class LandingPlatformController():
     def _calculateOffset(self):
         """
         Function: _calculateOffset
-        Purpose: Calculate the offset distance of the UAV to the desired landing point
+        Purpose: Calculate the offset distance of the UAV to the desired landing point, assumes the position is up to date
         Inputs: None
         Outputs: offset - an array of values representing <dx, dy, dz> in meters 
+        Description:
         """
         offset = [0, 0, 0]
-        self._getUAVPosition()
         offset[0] = self._landingPos[0] - self._uavPos[0]
         offset[1] = self._landingPos[1] - self._uavPos[1]
         offset[2] = self._landingPos[2] - self._uavPos[2]
@@ -202,31 +223,58 @@ class LandingPlatformController():
         Purpose: Get the UAV z-coordinate in the world frame
         Inputs: None
         Outputs: a floating point value representing the z-coordinate 
+        Description:
         """
         #Might want to figure out how to read UAV height from logs as this is a terrible way to go about it. 
         return self._hoverHeight
 
-    def _sendMovement(self, xDis, yDis, zDis):
+    def _sendMovement(self, xPos, yPos, zPos):
         """
         Function: _sendMovement
         Purpose: Instruct the UAV to move to certain coordinates
-        Inputs: xDis - a floating point value to move in the x-dimension, in meters
-                yDis - a floating point value to move in the y-dimension , in meters
-                zDis - a floating point value to move in the z-dimension, in meters
+        Inputs: xPos - a floating point value denoting the x-dimension coordinate
+                yPos - a floating point value denoting the y-dimension coordinate
+                zPos - a floating point value denoting the z-dimension coordinate
         Outputs: None
+        Description:
         """
+        #Make copy of world coordinates
+        worldCoords = [xPos, yPos, zPos]
+
+        #Transform the world coordinates to the UAV frame coordinates
+        transformX = worldCoords[0]*math.cos(self._uavOffsetAngle) + worldCoords[1]*math.sin(self._uavOffsetAngle)
+        transformY = -worldCoords[0]*math.sin(self._uavOffsetAngle) + worldCoords[1]*math.cos(self._uavOffsetAngle)
+        transformZ = zPos
+        
+        distances=[transformX - self._landingPos[0], transformY - self._landingPos[1], transformZ - self._landingPos[2]]
         #Send movement to UAV, UAV controller class will delay an appropriate time while the UAV moves
-        self._uav.move(xDis, yDis, zDis, self._uavVelocity)
+        self._uav.move(distances[0], distances[1], distances[2], self._uavVelocity)
         #Update hover height
-        self._hoverHeight += zDis
+        self._hoverHeight += distances[2]
         return
     
     def engageFlightRoutine(self):
-        self._sendMovement(0, 0, 0.5)
+        """
+        Function: engageFlightRoutine
+        Purpose: 
+        Inputs: None
+        Outputs: None
+        Description:
+        """
+        self._uav.launch()
+        while(self._uavInFrame() == False):
+            self._sendMovement(0, 0, 0.5)
         self._performLandingSequence()
         return
 
     def done(self):
+        """
+        Function: done
+        Purpose: Halt all class activities
+        Inputs: None
+        Outputs: None
+        Description:
+        """
         self._uav.land()
         self._uav.done()
         self._camera.close()
@@ -238,45 +286,49 @@ class LandingPlatformController():
         Purpose: Align UAV with desired coordinates, once aligned safely land the UAV
         Inputs: None
         Outputs: None
+        Description:
         """
-        #While UAV is still flying (height >= min)
-        #Get UAV position reported by camera 
-        #Calculate distance vector from landing point
-        #Move UAV along distance vector
-        #  While UAV is moving, stall landing procedure
-        #Repeat procedure
 
-        #Perform landing sequence
+        #Perform landing sequence while the current hover height is greater than the minimum hover height
         while((self._hoverHeight >= self._minHoverHeight)):
             #Get current position and save to temp variable, then copy to actual variable to prevent erroneous overwriting
             temp = self._getUAVPosition()
             if(temp != None):
                 startPos = temp.copy()
             else:
-                startPos = [0, 0, ]
+                startPos = [0, 0]
             offset = self._calculateOffset()
-            #Calculate the magnitude of the offset vector
-            offsetMagnitude = math.sqrt(math.pow(offset[0],2) + math.pow(offset[1],2))
+
             #If the magnitude is greater than the desired accuracy value, move the UAV in the X-Y plane
-            if(offsetMagnitude > self._uavLandingAccuracy):
+            if(self._uavOnTarget(offset) == False):
                 expectedPos = [startPos[0]+offset[0], startPos[1]+offset[1], offset[2]]
-                self._sendMovement(offset[0], offset[1], 0)
+                self._sendMovement(expectedPos[0], expectedPos[1], expectedPos[2])
                 
                 #While the UAV is not in the frame, reduce the offset given by ten percent
                 offsetRedux = 0.1
                 while(self._uavInFrame() == False):
                     self._sendMovement(-offset[0]*offsetRedux, -offset[1]*offsetRedux, 0)
-                    
+
+                #After movement, get the new UAV position so that the offset can be determined
                 temp = self._getUAVPosition()
                 endPos = temp.copy()
-                print("LPC: _performLandingSequence - offsetMagnitude =", offsetMagnitude)
+
+                #Send values to a screen/log file so that they can be viewed
                 print("LPC: _performLandingSequence - startPos =", startPos)
                 print("LPC: _performLandingSequence - Offset =", offset)
                 print("LPC: _performLandingSequence - expecetdPos =", expectedPos)
                 print("LPC: _performLandingSequence - endPos =", endPos)
-                self._alignUAV(startPos, expectedPos, endPos)
-                while(self._uavInFrame() == False):
-                    self._sendMovement(0,0,math.fabs(offset[2]*0.05))
+
+                #After movement, make sure the UAV is aligned properly
+                percentDiffX = expectedPos[0]/math.fabs(expectedPos[0] - endPos[0])
+                percentDiffY = expectedPos[1]/math.fabs(expectedPos[1] - endPos[1])
+                #If percent difference is greater than threshold and the angle is zero, create new transform
+                if((percentDiffX > self._coordTolerance or percentDiffY > self._coordTolerance) and self._uavOffsetAngle == 0):
+                    self._createCoordinateTransform(startPos, expectedPos, endPos)
+                elif((percentDiffX > self._coordTolerance or percentDiffY > self._coordTolerance) and self._uavOffsetAngle != 0):
+                    self._uavOffsetAngle = 0
+                #self._alignUAV(startPos, expectedPos, endPos)
+                    
             #Otherwise, move the UAV in the -Z direction
             else:
                 self._sendMovement(0, 0, 0.1*offset[2]) 
@@ -284,51 +336,136 @@ class LandingPlatformController():
         self._uav.land()
         return
 
-    def _alignUAV(self, startVector, expectedVector, endVector):
+    def _uavOnTarget(self, offsetVector):
+        """
+        Function: _uavOnTarget
+        Purpose: Determine if the UAV is within the target area for its specific height
+        Inputs: offsetVector - a list of floating point values representing the <dX, dY> necessary for the UAV to move to reach the center point
+        Outputs: a boolean value indicating whether the UAV is within the target area for its specific height
+        Description: _uavOnTarget determines if the UAV is within the appropriate offset from the target point by calculating the offset vector
+                     magnitude and comparing it to a value calculated by solving the function h = log_{k}(r) for the radius, r, where h is the 
+                     current height of the UAV and K is a scaling factor that can be adjusted depending on the desired function. If the offset
+                     vector's magnitude is less than the calculated radius, the function reports true. Otherwise, it reports false.
+        """
+        #Calculate the magnitude of the vector to allow for better comparison
+        offsetMag = math.sqrt(math.pow(offsetVector[0],2) + math.pow(offsetVector[1],2))
+
+        #Assumes the _uavHoverHeight variable has been recently updated
+        maxOffset = math.pow(self._onTargetFactor, self._hoverHeight - self._onTargetOffset)
+
+        print("LPC: _uavOnTarget - maxOffset =", maxOffset)
+        
+        #If the maximum offset allowed at the UAV height is greater than current offset, return true
+        if(maxOffset > offsetMag):
+            return True
+        return False
+
+    def _createCoordinateTransform(self, startPosition, expectedPosition, endPosition):
+        """
+        Function: _createCoordinateTransform
+        Purpose: Calculate the necessary angle to allow for UAV coordinates to be transformed from camera coordinates
+        Inputs: startPosition - a list of values indicating the starting <x, y> coordinates of the UAV in the view of the camera
+                expectedPosition - a list of values indicating expected <x, y> coordinates of the UAV in the view of the camera
+                actualVector - a list of values indicating the actual <x, y> coordinates of the UAV in the view of the camera
+        Outputs: None
+        Description: 
+        """
+        #Find the magnitude of the expected change
+        magnitudeExpected = math.sqrt(math.pow(expectedPosition[0]-startPosition[0],2) + math.pow(expectedPosition[1]-startPosition[1],2))
+
+        #Find the magnitude of the actual change by subtracting start position from actual position
+        magnitudeActual = math.sqrt(math.pow(endPosition[0]-startPosition[0],2) + math.pow(endPosition[1]-startPosition[1],2))
+
+        #Find the magnitude of the difference between actual and expected
+        magnitudeDiff = math.sqrt(math.pow(endPosition[0]-expectedPosition[0],2) + math.pow(endPosition[1]-expectedPosition[1],2))
+
+        if(magnitudeDiff == 0 or magnitudeActual == 0):
+            self._uavOffsetAngle = 0
+        else:
+            internalValue = -(math.pow(magnitudeDiff,2)-math.pow(magnitudeExpected,2)-math.pow(magnitudeActual,2))/(2*magnitudeDiff*magnitudeActual)
+            self._uavOffsetAngle = math.acos(internalValue)
+
+        return math.degrees(self._uavOffsetAngle)
+
+    def _determineAccuracy(self, startPosition, expectedPosition, endPosition):
+        """
+
+        """
+        
+        return
+                        
+    def _alignUAV(self, startPosition, expectedPosition, endPosition):
         """
         Function: _alignUAV
         Purpose: Reduce the UAV's offset rotation to near zero from perspective of camera
                  by calculating the angle between an expected move and the actual move
                  using the law of cosines. 
-        Inputs: expectedVector - a list of values indicating expected <x, y> coordinates of the UAV in the view of the camera
+        Inputs: startPosition - a list of values indicating the starting <x, y> coordinates of the UAV in the view of the camera
+                expectedPosition - a list of values indicating expected <x, y> coordinates of the UAV in the view of the camera
                 actualVector - a list of values indicating the actual <x, y> coordinates of the UAV in the view of the camera
         Outputs: the angle, in degrees, by which the UAV is offset
+        Description: _alignUAV determines the angle the UAV is rotated by, when compared with the camera's world frame, and
+                     rotates the UAV to better align with the camera. It does this by solving for the angle, theta, in the law of cosines form
+                     a^2 = b^2 + c^2 - b*c*cos(theta) where a is the magnitude of the vector determined by the difference of the expected and 
+                     end positions, b is the magnitude of the vector determined by the difference of the expected and start positions,
+                     and c is the magnitude of the vector determined by the difference of the end and start positions. After the rotation, the 
+                     camera is queried to insure that the UAV is still within the camera frame. If it is no longer detected, the UAV is instructed
+                     to move upwards until the camera is able to positively detect it. If the UAV reaches the maximum height possible, the error
+                     correction will make use of directional movements in the X-Y plane to attempt to relocate the UAV. If those fail, the UAV will
+                     be instructed to land at its current position and the system will exit. 
         """ 
         #Find the magnitude of the expected change
-        magnitudeExpected = math.sqrt(math.pow(expectedVector[0]-startVector[0],2) + math.pow(expectedVector[1]-startVector[1],2))
+        magnitudeExpected = math.sqrt(math.pow(expectedPosition[0]-startPosition[0],2) + math.pow(expectedPosition[1]-startPosition[1],2))
+
         #Find the magnitude of the actual change by subtracting start position from actual position
-        magnitudeActual = math.sqrt(math.pow(endVector[0]-startVector[0],2) + math.pow(endVector[1]-startVector[1],2))
+        magnitudeActual = math.sqrt(math.pow(endPosition[0]-startPosition[0],2) + math.pow(endPosition[1]-startPosition[1],2))
+
         #Find the magnitude of the difference between actual and expected
-        magnitudeDiff = math.sqrt(math.pow(endVector[0]-expectedVector[0],2) + math.pow(endVector[1]-expectedVector[1],2))
+        magnitudeDiff = math.sqrt(math.pow(endPosition[0]-expectedPosition[0],2) + math.pow(endPosition[1]-expectedPosition[1],2))
 
         #If either of the magnitudes are equal to zero, return zero degrees
         if((magnitudeExpected == 0) or (magnitudeActual == 0)):
             return 0
         
-        print("LPC: _alignUAV - startCoord =", startVector)
-        print("LPC: _alignUAV - expectedChange =", expectedVector)
-        print("LPC: _alignUAV - actual =", endVector)
-        print("LPC: _alignUAV - (magE, magA, magD) =", (magnitudeExpected, magnitudeActual, magnitudeDiff))
-        
         #Find angle between two vectors by solving the law of cosines form for the angle.
         internalVal = (math.pow(magnitudeExpected,2) + math.pow(magnitudeActual,2) - math.pow(magnitudeDiff,2))/(2*magnitudeExpected*magnitudeActual)
-        print("LPC: _alignUAV - internalVal =", internalVal)
         angle = math.degrees(math.acos(internalVal))
+        
+        print("LPC: _alignUAV - startCoord =", startPosition)
+        print("LPC: _alignUAV - expectedChange =", expectedPosition)
+        print("LPC: _alignUAV - actual =", endPosition)
+        print("LPC: _alignUAV - (magE, magA, magD) =", (magnitudeExpected, magnitudeActual, magnitudeDiff))
+        print("LPC: _alignUAV - internalVal =", internalVal)
         print("LPC: _alignUAV - angle =", angle)
 
         #Reduce angle to below 360 while preserving original sign value
-        angle = (angle/math.fabs(angle))*(angle%360)
+        #This step is likely unnecessary as math.cos should return a value from zero to two pi
+        angle = (angle/math.fabs(angle))*(math.fabs(angle)%360)
 
         #Reduce the angle to below 180 while preserving original sign value
-        if(math.fabs(angle) > 180):
-            angle = (angle/math.fabs(angle))*(math.fabs(angle) - 360)
-            
+        if(angle > 180):
+            angle = angle - 360
+        elif(angle < -180):
+            angle = angle + 360
+
         self._uav.rotate(angle)
+
+        #After alignment, if the UAV is not inside the vision cone, increase the height to preserve <x, y> position
+        #Will need to make this error correction more robust to account for maximum height limitations
+        while(self._uavInFrame() == False):
+            self._sendMovement(0,0,self._hoverHeight*0.05)
         
         return angle
     
     def _getBatteryLevel(self):        
-        pass
+        """
+        Function: _getBatteryLevel
+        Purpose: Query the UAV to determine the battery percentage
+        Inputs: None
+        Outputs: a floating point value denote the battery percentage from zero to one hundred
+        Description: Makes use of the UAV controller's built-in function to query the battery level
+        """
+        return self._uav.getBatteryLevel()
    
     def _getCameraSerialConnection(self, expectedVals):
         """
@@ -381,7 +518,7 @@ class LandingPlatformController():
         else:
             #If a known Operating System is not found, raise an exception
             raise EnvironmentError("_getAllSerialPorts: Operating System not supported")
-
+        
         for port in possiblePorts:
             try:
                 #For all possible ports, attempt to create a test connection
@@ -392,5 +529,5 @@ class LandingPlatformController():
             except(OSError, serial.SerialException):
                 #If not successfully created, catch exception and ignore it
                 pass
-
+            
         return availablePorts
