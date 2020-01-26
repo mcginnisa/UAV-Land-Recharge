@@ -31,7 +31,7 @@ class LandingPlatformController():
         self._minHoverHeight = hoverHeight - hoverHeight/10
         self._uavPos = [-1, -1, -1]
         self._landingPos = [0.07, 0, 0] #A set of world coordinates that needs to be defined somehow
-        self._uavOffsetAngle = 0 #in radians
+        self._uavOffsetAngle = -math.pi/2 #in radians
 
         #Define class tolerance/accuracy values
         self._cameraAccuracy = 15 #Number of points the camera will sample each pass
@@ -263,7 +263,7 @@ class LandingPlatformController():
         #Transform the world coordinates to the UAV frame coordinates
         transformX = worldCoords[0]*math.cos(self._uavOffsetAngle) + worldCoords[1]*math.sin(self._uavOffsetAngle)
         transformY = -worldCoords[0]*math.sin(self._uavOffsetAngle) + worldCoords[1]*math.cos(self._uavOffsetAngle)
-        print("LPC: _sendToHome - transform =", (transformX, transformY, transformZ))
+        print("LPC: _sendToHome - transform =", (transformX, transformY))
         print("LPC: _sendToHome - self._landingPos =", self._landingPos)
 
         distances=[self._landingPos[0] - transformX, self._landingPos[1] - transformY, 0]
