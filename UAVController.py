@@ -112,7 +112,12 @@ class UAVController():
         
         if(degree < 0):
             print("UC: rotate - Going Right")
-            self.MC.turn_right(abs(degree))
+            locDeg = 0
+            #self.MC.turn_right(abs(degree))
+            for _ in range(1,int(abs(degree)/1)):
+                locDeg += 1
+                self.MC.turn_right(1)
+            self.MC.turn_right(abs(degree)-locDeg)
         else:
             print("UC: rotate - Going Left")
             self.MC.turn_left(abs(degree))

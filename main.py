@@ -26,18 +26,12 @@ def main():
         LPC = LandingPlatformController(UAV)
     print("MAIN: Landing Platform Controller Initialized")
     LPC.engageFlightRoutine()
+    #LPC._sendMovement(0.5, 0, 0)
+    #LPC._sendMovement(0, 0.5, 0)
     #LPC._sendMovement(0, 0, 0.5)
-    #print("MAIN:", LPC._uavInFrame())
-    #while(LPC._uavInFrame()):
-    #    LPC._sendMovement(0.1, 0, 0)
-        #LPC._sendMovement(0.5, 0.5, 0)
-        #print("MAIN:", LPC._getUAVPosition())
-        #LPC._sendMovement(-0.5, -0.5, 0)
-        #print("MAIN:", LPC._getUAVPosition())
-
-        
-        #LPC._alignUAV()
-        
+    #LPC._sendMovement(-0.5, 0, 0)
+    #LPC._sendMovement(0, -0.5, 0)
+    #LPC._sendMovement(0, 0, -0.5)
     LPC.done()
     #UAV.launch()
     #while(True):
