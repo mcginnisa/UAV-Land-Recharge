@@ -31,10 +31,12 @@ class LandingPlatformController():
         self._minHoverHeight = hoverHeight - hoverHeight/10
         self._uavPos = [-1, -1, -1]
         self._landingPos = [0.07, 0, 0] #A set of world coordinates that needs to be defined somehow
-        self._uavOffsetAngle = -math.pi/2 #in radians
+        self._uavOffsetAngle = 0 #in radians
 
         #Define class tolerance/accuracy values
         self._cameraAccuracy = 15 #Number of points the camera will sample each pass
+        self._cameraInFrameAccuracy = 5 #Number of points camera will use to determine if UAV is in frame
+        self._cameraInFrameThreshold = 0.5 #Percentage of points at which the UAV is considered 'in frame'
         self._uavLandingTolerance = 0.1 #The magnitude a offset vector needs to overcome to be considered valid
         self._coordTolerance = 0.05 #Value used to determine if a new coordinate transform is necessary
         self._onTargetFactor = 12 #An integer value that determines the factor of the logarithmic function that determines if the UAV is on target
@@ -148,10 +150,10 @@ class LandingPlatformController():
         self._camera.reset_input_buffer()
         
         #Workaround currently
-       #Until the last value in the initial value is found, read characters
-#        while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
+        #Until the last value in the initial value is found, read characters
+        #while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
 
-        for i in range(0, int(self._cameraAccuracy*0.2)): #Will need to worry about this if twenty percent of accuracy is less than one
+        for i in range(0, int(self._cameraInFrameAccuracy)):
             #Workaround currently
             #Until the last value in the initial value is found, read characters
             while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
@@ -178,7 +180,7 @@ class LandingPlatformController():
                 self._camera.reset_input_buffer()
 
         print("LPC: _uavInFrame - xPoints =", xPoints)
-        if(xPoints.count(xValDummy) < len(xPoints)*0.5): #Will need to allow this fifty percent to be modifiable
+        if(xPoints.count(xValDummy) <= len(xPoints)*self._cameraInFrameThreshold):
             inFrame = True
             
         return inFrame
@@ -208,7 +210,9 @@ class LandingPlatformController():
         Purpose: Calculate the offset distance of the UAV to the desired landing point, assumes the position is up to date
         Inputs: None
         Outputs: offset - an array of values representing <dx, dy, dz> in meters 
-        Description:
+        Description: This functions makes use of the landing platform position determined by the user to calculate the offset
+                     given the current UAV position. This assumes that the UAV position has been updated recently. Otherwise,
+                     it will be an inaccurate offset value. 
         """
         offset = [0, 0, 0]
         offset[0] = self._landingPos[0] - self._uavPos[0]
@@ -224,7 +228,7 @@ class LandingPlatformController():
         Outputs: a floating point value representing the z-coordinate 
         Description:
         """
-        #Might want to figure out how to read UAV height from logs as this is a terrible way to go about it. 
+        #Will want to figure out how to read UAV height from logs as this is a terrible way to go about it. 
         return self._hoverHeight
 
     def _sendMovement(self, xDis, yDis, zDis):
@@ -248,7 +252,7 @@ class LandingPlatformController():
 
     def _sendToHome(self, xPos, yPos):
         """
-        Function: _sendMovement
+        Function: _sendToHome
         Purpose: Instruct the UAV to move to certain coordinates
         Inputs: xPos - a floating point value denoting the x-dimension coordinate
                 yPos - a floating point value denoting the y-dimension coordinate
@@ -266,15 +270,18 @@ class LandingPlatformController():
         print("LPC: _sendToHome - transform =", (transformX, transformY))
         print("LPC: _sendToHome - self._landingPos =", self._landingPos)
 
-        distances=[self._landingPos[0] - transformX, self._landingPos[1] - transformY, 0]
+        temp = [self._landingPos[0] - transformX, self._landingPos[1] - transformY, 0]
+        distances = temp.copy()
         print("LPC: _sendToHome - distances =", distances)
 
-        #If there is a movement to make
-        if( (distances[0]+distances[1]+distances[2]) != 0):
-            #Send movement to UAV, UAV controller class will delay an appropriate time while the UAV moves
-            self._uav.move(distances[0], distances[1], distances[2], self._uavVelocity)
-            #Update hover height
-            self._hoverHeight += distances[2]
+        #Instruct UAV to move distances determined
+        self._sendMovement(distances[0], distances[1], distances[2])
+        #Update hover height
+        self._hoverHeight += distances[2]
+        #To prevent leaving of the camera frame, reduce previous movement by 10% if UAV is not in frame
+        while(self._uavInFrame() == False and (distances[0]+distances[1]+distances[2]) != 0):
+            print("LPC: _sendToHome - UAV Not in Frame")
+            self._sendMovement(-0.1*distances[0], -0.1*distances[1], 0*distances[2])
             
         return
     
@@ -287,12 +294,13 @@ class LandingPlatformController():
         Description:
         """
         self._uav.launch()
-        while(self._uavInFrame() == False):
-            self._sendMovement(0, 0, 0.5)
+        #while(self._uavInFrame() == False):
+        #    self._sendMovement(0, 0, 0.5)
+        self._sendMovement(0,0,1.2)
         curPos = self._getUAVPosition()
-        self._sendToHome(curPos[0], curPos[1])
-        time.sleep(5)
-        #self._performLandingSequence()
+        #self._sendToHome(curPos[0], curPos[1])
+        #time.sleep(5)
+        self._performLandingSequence()
         return
 
     def done(self):
@@ -334,14 +342,7 @@ class LandingPlatformController():
                 temp = [startPos[0]+offset[0], startPos[1]+offset[1], offset[2]]
                 expectedPos = temp.copy()
                 print("LPC: _performLandingSequence - expecetdPos =", expectedPos)
-                self._sendMovement(expectedPos[0], expectedPos[1], 0.0)
-                
-                #While the UAV is not in the frame, reduce the offset given by ten percent
-                offsetRedux = 0.1
-                while(self._uavInFrame() == False):
-                    print("LPC: _performLandingSequence - UAV not in frame")
-                    self._sendMovement(-offset[0]*offsetRedux, -offset[1]*offsetRedux, 0)
-
+                self._sendToHome(startPos[0], startPos[1])
                 #After movement, get the new UAV position so that the offset can be determined
                 temp = self._getUAVPosition()
                 if(temp != None):
@@ -350,7 +351,7 @@ class LandingPlatformController():
                     endPos = [0, 0]
 
                 print("LPC: _performLandingSequence - endPos =", endPos)
-
+        
                 #After movement, make sure the UAV is aligned properly
                 percentDiffX = expectedPos[0]/math.fabs(expectedPos[0] - endPos[0])
                 percentDiffY = expectedPos[1]/math.fabs(expectedPos[1] - endPos[1])
