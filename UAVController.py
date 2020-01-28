@@ -133,6 +133,7 @@ class UAVController():
         Inputs: none
         Outputs: none
         """
+
         retVal = []
         with SyncLogger(self.UAV, self.UAVLogConfig) as LogObject:
             self.UAVLogObject = LogObject
