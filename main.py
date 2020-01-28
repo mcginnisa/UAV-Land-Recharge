@@ -21,22 +21,16 @@ def main():
     while(UAV == None):
         UAV = UAVController()
     print("MAIN: UAV Connected, Initializing Landing Platform Controller")
-    LPC = None
-    while(LPC == None):
-        LPC = LandingPlatformController(UAV)
-    print("MAIN: Landing Platform Controller Initialized")
-    LPC.engageFlightRoutine()
-    #LPC._sendMovement(0.5, 0, 0)
-    #LPC._sendMovement(0, 0.5, 0)
-    #LPC._sendMovement(0, 0, 0.5)
-    #LPC._sendMovement(-0.5, 0, 0)
-    #LPC._sendMovement(0, -0.5, 0)
-    #LPC._sendMovement(0, 0, -0.5)
-    LPC.done()
-    #UAV.launch()
-    #while(True):
-    #    print("MAIN:", LPC._calculateOffset())
-    #    time.sleep(0.5)
-    
+    for _ in range(0, 20):
+        print("Iteration:", _)
+        print(UAV.getBatteryLevel())
+    UAV.done()
+#    LPC = None
+#    while(LPC == None):
+#        LPC = LandingPlatformController(UAV)
+#    print("MAIN: Landing Platform Controller Initialized")
+#    LPC.engageFlightRoutine()
+#    LPC.done()
+
 if __name__ == "__main__":
     main()
