@@ -8,23 +8,28 @@
 
 import math
 
-# Define camera parameters
-FOCAL_LENGTH = 0.00265	# focal length of camera, in meters
+# Define lens and camera parameters
+FOCAL_LENGTH = 0.00265	# focal length of lens, in meters
 X_IMAGE = 0.003984      # sensor size, x, in meters, per datasheet
 Y_IMAGE = 0.002952	# sensor size, y, in meters, per datasheet
 X_SENSOR = 656		# sensor size, x, in pixels, per datasheet
 Y_SENSOR = 488	      	# sensor size, y, in pixels, per datasheet
 X_ACTIVE = 640		# active sensors, x, in pixels, per datasheet
 Y_ACTIVE = 480		# active sensors, y, in pixels, per datasheet
+
 OFFSET_ORIGIN = True	# if pixel origin differs from world origin
-X_RANGE = 320		# frame size, x, in pixels
-Y_RANGE = 240		# frame size, y, in pixels
+
+# Needs to be updated for selected camera mode and frame cropping
+X_RANGE = 240		# frame size, x, in pixels, per selected camera mode
+Y_RANGE = 240		# frame size, y, in pixels, per selected camera mode
 
 # determine dimensions (in meters) of individual pixels (ps = pixelsize)
-x_ps = X_IMAGE/X_SENSOR
-x_ps = x_ps*(X_ACTIVE/X_RANGE)
-y_ps = Y_IMAGE/Y_SENSOR
-y_ps = y_ps*(Y_ACTIVE/Y_RANGE)
+x_ps = (X_IMAGE/X_SENSOR)         # pixel size for default VGA mode, no cropping
+x_ps = x_ps*2                     # temp fix, this corresponds to QVGA vs VGA pixel size
+#x_ps = x_ps*(X_ACTIVE/X_RANGE)   # obsolete, will not work for cropped frames
+y_ps = (Y_IMAGE/Y_SENSOR)         # pixel size for default VGA mode, no cropping
+y_ps = y_ps*2                     # temp fix, this corresponds to QVGA vs VGA pixel size
+#y_ps = y_ps*(Y_ACTIVE/Y_RANGE)   # obsolete, will not work for cropped frames
 
 #  xy offset of world origin (assumed image center) from pixel origin
 x_off = 0
@@ -42,9 +47,9 @@ def pixelPoint(x_pixel, y_pixel, distance, focal, x_pix_off, y_pix_off, x_pix_si
    return x,y;
 
 # example coordinates
-a = 160         # x pixel
-b = 120         # y pixel
-z = 2           # distance, in meters
+a = 200         # x pixel
+b = 50        # y pixel
+z = 0.9           # distance, in meters
 
 # example function call
 x,y = pixelPoint(a, b, z, FOCAL_LENGTH, x_off, y_off, x_ps, y_ps);

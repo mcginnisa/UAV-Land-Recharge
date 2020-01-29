@@ -1,0 +1,19 @@
+import UAVController
+import LandingPlatformController
+
+import signal
+import sys
+
+def signalHandler(sig, frame):
+    #Execute some code here
+    sys.exit(0)
+
+def main():
+    UAV = None
+    while(UAV == None):
+        UAV = UAVController()
+    
+    LPC = LandingPlatformController(UAV)
+    
+if __name __ == "__main__":
+    main()
