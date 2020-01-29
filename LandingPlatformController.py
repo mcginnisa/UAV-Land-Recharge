@@ -3,7 +3,6 @@ import sys
 import glob
 import math
 import time
-import numpy
 
 class LandingPlatformController():
     
