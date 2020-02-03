@@ -23,7 +23,10 @@ class LandingPlatformController():
         #Define/Manage UAV connection
         if(UAV == None):
             print("ERROR: Landing Platform Controller requires a UAV control object")
-            
+
+        #Define boolean values used for flagging errors
+        self._updatedPosition = False
+        
         #Define class constants necessary for UAV 
         self._uav = UAV
         self._uavVelocity = velocity
@@ -72,7 +75,7 @@ class LandingPlatformController():
         """
         if(self._camera == None):
             return 
-
+        
         #Find the default value for the camera, this indicates non-detection
         xValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[0])+1:self._cameraInitValue.rfind(self._serialLimiters[1])])
         yValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[1])+1:self._cameraInitValue.rfind(self._serialLimiters[2])])
@@ -96,7 +99,7 @@ class LandingPlatformController():
             posString = posString[posString.find(self._serialLimiters[0]):posString.find(self._serialLimiters[2])+1]
         
             if(len(posString) > 0):
-                if(posString[0] == '{'):                    
+                if(posString[0] == self._serialLimiters[0]):                    
                     #Find the limiter positions to properly split string into x & y components
                     initIndex=posString.rfind(self._serialLimiters[0])
                     splitIndex=posString.rfind(self._serialLimiters[1])
@@ -109,6 +112,7 @@ class LandingPlatformController():
                     if(xPos > xValDummy or yPos > yValDummy):
                         #A value greater than the init string indicates an error occurred
                         self._uavPos = [None, None, None]
+                        self._updatedPosition = False
                         return self._uavPos
 
                     #If values are less than dummy values, append to array
@@ -128,6 +132,7 @@ class LandingPlatformController():
             self._uavPos[1] = math.fsum(yPoints)/len(yPoints)
         else:
             self._uavPos = [None, None, None]
+            self._updatedPosition = False
             
         return self._uavPos
 
@@ -149,10 +154,6 @@ class LandingPlatformController():
         #Flush serial buffer to insure that most recent data points are grabbed
         self._camera.reset_input_buffer()
         
-        #Workaround currently
-        #Until the last value in the initial value is found, read characters
-        #while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
-
         for i in range(0, int(self._cameraInFrameAccuracy)):
             #Workaround currently
             #Until the last value in the initial value is found, read characters
@@ -294,12 +295,8 @@ class LandingPlatformController():
         Description:
         """
         self._uav.launch()
-        #while(self._uavInFrame() == False):
-        #    self._sendMovement(0, 0, 0.5)
-        self._sendMovement(0,0,1.2)
-        curPos = self._getUAVPosition()
-        #self._sendToHome(curPos[0], curPos[1])
-        #time.sleep(5)
+        while(self._uavInFrame() == False):
+            self._sendMovement(0, 0, 0.5)
         self._performLandingSequence()
         return
 
@@ -329,8 +326,9 @@ class LandingPlatformController():
         while((self._hoverHeight >= self._minHoverHeight)):
             #Get current position and save to temp variable, then copy to actual variable to prevent erroneous overwriting
             temp = self._getUAVPosition()
-            if(temp != None):
+            if(self._updatedPosition == True):
                 startPos = temp.copy()
+                self._updatedPosition = False;
             else:
                 startPos = [0, 0]
             print("LPC: _performLandingSequence - startPos1 =", startPos)
@@ -345,10 +343,11 @@ class LandingPlatformController():
                 self._sendToHome(startPos[0], startPos[1])
                 #After movement, get the new UAV position so that the offset can be determined
                 temp = self._getUAVPosition()
-                if(temp != None):
+                if(self._updatedPosition == True):
                     endPos = temp.copy()
+                    self._updatedPosition = False;
                 else:
-                    endPos = [0, 0]
+                    endPos = startPos.copy()
 
                 print("LPC: _performLandingSequence - endPos =", endPos)
         
