@@ -44,7 +44,7 @@ class LandingPlatformController():
         self._coordTolerance = 0.05 #Value used to determine if a new coordinate transform is necessary
         self._onTargetFactor = 12 #An integer value that determines the factor of the logarithmic function that determines if the UAV is on target
         self._onTargetOffset = 1.8 #A floating point value that determines the height offset
-        
+
         #Define constants to allow for pixel to world coordinate conversion
         self._focalLength = 0.00265 #focal length of lens in meters, per datasheet
         self._xImage = 0.003984 #sensor x-size in meters, per datasheet
@@ -130,10 +130,11 @@ class LandingPlatformController():
         if((len(xPoints) > 0) and (len(yPoints) > 0)):
             self._uavPos[0] = math.fsum(xPoints)/len(xPoints)
             self._uavPos[1] = math.fsum(yPoints)/len(yPoints)
+            self._updatedPosition = True
         else:
             self._uavPos = [None, None, None]
             self._updatedPosition = False
-            
+
         return self._uavPos
 
     def _uavInFrame(self):
@@ -326,15 +327,19 @@ class LandingPlatformController():
         while((self._hoverHeight >= self._minHoverHeight)):
             #Get current position and save to temp variable, then copy to actual variable to prevent erroneous overwriting
             temp = self._getUAVPosition()
+            print("LPC: _performLandingSequence - updatedPosition =", self._updatedPosition)
             if(self._updatedPosition == True):
                 startPos = temp.copy()
                 self._updatedPosition = False;
             else:
                 startPos = [0, 0]
             print("LPC: _performLandingSequence - startPos1 =", startPos)
-            offset = self._calculateOffset()
-            print("LPC: _performLandingSequence - Offset =", offset)
-            
+            if(self._updatedPosition == True):
+                offset = self._calculateOffset()
+                print("LPC: _performLandingSequence - Offset =", offset)
+            else:
+                offset = [0, 0, 0]
+                
             #If the magnitude is greater than the desired accuracy value, move the UAV in the X-Y plane
             if(self._uavOnTarget(offset) == False):
                 temp = [startPos[0]+offset[0], startPos[1]+offset[1], offset[2]]
@@ -528,8 +533,10 @@ class LandingPlatformController():
         
         #For all ports returned, create a test connection and look for expected values
         for port in availablePorts:
-            test = serial.Serial(port)
-            while(test.read(1).decode('ascii') != expectedVals[-1]):{}
+            test = serial.Serial(port, timeout=0.01)
+            timeoutCount = 0
+            while(test.read(1).decode('ascii') != expectedVals[-1] and timeoutCount <= len(expectedVals)*4):
+                timeoutCount += 1
             if(test.read(len(expectedVals)).decode('ascii') == expectedVals):
                 #If expected values are found, assign the string value of the port
                 cameraPort = port
