@@ -20,18 +20,14 @@ def main():
     print("MAIN: Attempting to connect to UAV")
     while(UAV == None):
         UAV = UAVController()
-    print("MAIN: UAV Connected, Initializing Landing Platform Controller")
-    while(True):
-        UAV.getBatteryLevel()
-        time.sleep(1)
-    #print(UAV.getBatteryLevel())
-        
-#    LPC = None
-#    while(LPC == None):
-#        LPC = LandingPlatformController(UAV)
-#    print("MAIN: Landing Platform Controller Initialized")
-#    LPC.engageFlightRoutine()
-#    LPC.done()
+    print("MAIN: UAV Connected, Initializing Landing Platform Controller")        
+    LPC = None
+    while(LPC == None):
+        print("MAIN: LPC is NONE")
+        LPC = LandingPlatformController(UAV)
+    print("MAIN: Landing Platform Controller Initialized")
+    LPC.engageFlightRoutine()
+    LPC.done()
 
 if __name__ == "__main__":
     main()
