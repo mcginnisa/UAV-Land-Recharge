@@ -110,12 +110,6 @@ class LandingPlatformController():
                     xPos = int(posString[(initIndex+1):splitIndex])
                     yPos = int(posString[(splitIndex+1):lastIndex])
 
-                    if(xPos > xValDummy or yPos > yValDummy):
-                        #A value greater than the init string indicates an error occurred
-                        self._uavPos = [None, None, None]
-                        self._updatedPosition = False
-                        return self._uavPos
-
                     #If values are less than dummy values, append to array
                     if((xPos <= xValDummy) and (yPos <= yValDummy)):
                         #Convert from pixels to world coordinates with conversion function
@@ -133,7 +127,6 @@ class LandingPlatformController():
             self._uavPos[1] = math.fsum(yPoints)/len(yPoints)
             self._updatedPosition = True
         else:
-            self._uavPos = [None, None, None]
             self._updatedPosition = False
 
         return self._uavPos
@@ -206,7 +199,7 @@ class LandingPlatformController():
         x = k*xPixSize*(x_pixel - self._xOff)
         y = k*yPixSize*(y_pixel - self._yOff)
         return x,y
-    
+
     def _calculateOffset(self):
         """
         Function: _calculateOffset
@@ -362,11 +355,12 @@ class LandingPlatformController():
                     print("LPC: _performLandingSequence - offsetAngle =" + str(self._uavOffsetAngle))
                     self._uavOffsetAngle = 0
                 #self._alignUAV(startPos, expectedPos, endPos)
-                    
+                
             #Otherwise, move the UAV in the -Z direction
             else:
                 self._sendMovement(0, 0, 0.1*offset[2]) 
-            #END LOOP
+            
+        #Perform Landing Operations Here
         self._uav.land()
         return
 
