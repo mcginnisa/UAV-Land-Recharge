@@ -21,9 +21,11 @@ def main():
     while(UAV == None):
         UAV = UAVController()
     print("MAIN: UAV Connected, Initializing Landing Platform Controller")
+    start = time.time()
     while(True):
-        UAV.getBatteryLevel()
-        time.sleep(1)
+        print(UAV.getHeight(),UAV.getBatteryLevel())
+        print("UPDATED",time.time() - start)
+        time.sleep(0.1)
     #print(UAV.getBatteryLevel())
         
 #    LPC = None
