@@ -28,23 +28,7 @@ class UAVController():
         self.airborne = False
         self._recentDataPacket = None
         self._receivingDataPacket = False
-        
-        #Setup logging objects/constants
-        rootLog = logging.getLogger()
-        rootLog.setLevel(logging.INFO)
 
-        #Setup battery stream handler
-        self._batteryCaptureString = io.StringIO()
-        self._batteryStreamHandler = logging.StreamHandler(self._batteryCaptureString)
-        self._batteryStreamHandler.setLevel(logging.INFO)
-        rootLog.addHandler(self._batteryStreamHandler)
-        
-        #Setup height stream handler
-        self._heightCaptureString = io.StringIO()
-        self._heightStreamHandler = logging.StreamHandler(self._heightCaptureString)
-        self._heightStreamHandler.setLevel(logging.INFO)
-        rootLog.addHandler(self._heightStreamHandler)
-        
         #Attempt to locate UAV by scanning available interface
         for _ in range(0,500):
             if(len(self.available) > 0):
@@ -62,6 +46,7 @@ class UAVController():
             self.UAVLogConfig.add_variable('pm.batteryLevel', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.x', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.y', 'float')
+            self.UAVLogConfig.add_variable('stateEstimate.z', 'float')
             #Add more variables here for logging as desired
 
             self.UAV.log.add_config(self.UAVLogConfig)
@@ -174,7 +159,7 @@ class UAVController():
         """
         retVal = None
         if(self._recentDataPacket != None and self._receivingDataPacket == False):
-            retVal = self._recentDataPacket["stateEstimate.x"]
+            retVal = self._recentDataPacket["stateEstimate.z"]
 
         return retVal
         
