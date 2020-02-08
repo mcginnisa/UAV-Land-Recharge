@@ -1,8 +1,4 @@
-# In Memory Basic Frame Differencing Example
-#
-# This example demonstrates using frame differencing with your OpenMV Cam. It's
-# called basic frame differencing because there's no background image update.
-# So, as time passes the background image may change resulting in issues.
+#Now with programmatic reseting
 
 import sensor, image, pyb, os, time
 from pyb import USB_VCP
