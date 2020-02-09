@@ -3,22 +3,20 @@ import sys
 import glob
 import math
 import time
-import numpy
-import logging
 
 class LandingPlatformController():
     
-    def __init__(self, UAV=None, settings=dict(), cameraInitValue='{904$904}\r\n', hoverHeight=0.5, velocity=0.2, serialLimiters=['{','$','}'], debug=True):
+    def __init__(self, settings=dict(), debug=False):
         """
         Function: __init__
         Purpose: Setup the LandingPlatformController class
-        Inputs: UAV - a UAV controller object that is able to direct a relevant UAV
-                cameraInitValue - a string denoting the default value that should be present on the serial connection representing the camera
-                hoverHeight - a floating point value denoting a minimum height in meters to hover
-                velocity - a floating point value indicating the velocity in meters per second the UAV will travel at
-                serialLimiters - an array of strings that denote the limiting characters/strings for the serial data
+        Inputs: debug - a boolean value that indicates whether debug messages and actions are taken. If false, systems will fail silently or crash.  
+                settings - a relational array that contains various parameters that can be changed by the user
+
+        <<<DETAIL SETTINGS HERE>>>
+
         Outputs: None
-        Description:
+        Description: 
         """
 
         #Define boolean values used for flagging errors
