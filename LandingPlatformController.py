@@ -203,7 +203,7 @@ class LandingPlatformController():
 
         while(self._getCameraSerialConnection(cameraInitValue) == None):{"""Do Nothing"""}
         self._camera = serial.Serial(port=self._getCameraSerialConnection(cameraInitValue))
-
+        
 
     def _getUAVPosition(self):
         """
