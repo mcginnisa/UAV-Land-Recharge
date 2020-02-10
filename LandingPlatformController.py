@@ -71,138 +71,170 @@ class LandingPlatformController():
             #If the dictionary value is not present, use defaults
             self._landingPos = [0, 0, 0]
 
-        #Define class tolerance/accuracy values
+        #Begin definition of class tolerance/accuracy values
+
+        #Define a number of points the camera will sample each pass
         try:
             self._cameraAccuracy = settings['cameraAccuracy']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._cameraAccuracy = 15 #Number of points the camera will sample each pass
+            self._cameraAccuracy = 15 
 
+        #Define a number of points camera will use to determine if UAV is in frame
         try:
             self._cameraInFrameAccuracy = settings['cameraInFrameAccuracy']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._cameraInFrameAccuracy = 5 #Number of points camera will use to determine if UAV is in frame
+            self._cameraInFrameAccuracy = 5 
 
+        #Define a percentage of points at which the UAV is considered 'in frame'
         try:
             self._cameraInFrameThreshold = settings['cameraInFrameThreshold']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._cameraInFrameThreshold = 0.5 #Percentage of points at which the UAV is considered 'in frame'
+            self._cameraInFrameThreshold = 0.5
 
+        #Define the magnitude an offset vector needs to overcome to be considered valid
         try:
             self._uavLandingTolerance = settings['uavLandingTolerance']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._uavLandingTolerance = 0.1 #The magnitude a offset vector needs to overcome to be considered valid
+            self._uavLandingTolerance = 0.1 
 
+        #Define a value used to determine if a new coordinate transform is necessary
         try:
             self._coordTolerance = settings['coordTolerance']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._coordTolerance = 0.05 #Value used to determine if a new coordinate transform is necessary
+            self._coordTolerance = 0.05 
 
+        #Define an integer value that determines the factor of the logarithmic function that determines if the UAV is on target
         try:
             self._onTargetFactor = settings['onTargetFactor']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._onTargetFactor = 12 #An integer value that determines the factor of the logarithmic function that determines if the UAV is on target
+            self._onTargetFactor = 12 
 
+        #Define a floating point value that determines the height offset
         try:
             self._onTargetOffset = settings['onTargetOffset']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._onTargetOffset = 1.8 #A floating point value that determines the height offset
+            self._onTargetOffset = 1.8
 
-        #Define constants to allow for pixel to world coordinate conversion
+        #End definition of class tolerance/accuracy values
+
+        #Begin definitions of values to allow for pixel to world coordinate conversion
+        #Define the focal length of lens in meters, per datasheet
         try:
             self._focalLength = settings['focalLength']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._focalLength = 0.00265 #focal length of lens in meters, per datasheet
+            self._focalLength = 0.00265 
 
+        #Define the sensor x-size in meters, per datasheet
         try:
             self._xImage = settings['xImage']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._xImage = 0.003984 #sensor x-size in meters, per datasheet
+            self._xImage = 0.003984 
 
+        #Define the sensor y-size in meters, per datasheet
         try:
             self._yImage = settings['yImage']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._yImage = 0.002952 #sensor y-size in meters, per datasheet
+            self._yImage = 0.002952 
 
+        #Define the sensor x-size in pixels, per datasheet
         try:
             self._xSensor = settings['xSensor']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._xSensor = 656 #sensor x-size in pixels, per datasheet
+            self._xSensor = 656
 
+        #Define the sensor y-size in pixels, per datasheet
         try:
             self._ySensor = setting['xSensor']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._ySensor = 488 #sensor y-size in pixels, per datasheet
+            self._ySensor = 488 
 
+        #Define the dimension of active sensors in the x direction in pixels, per datasheet
         try:
             self._xActive = settings['xActive']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._xActive = 640 #Dimension of active sensors in the x direction in pixels, per datasheet
+            self._xActive = 640 
 
+        #Define the dimension of active sensors in the y direction in pixels, per datasheet
         try:
             self._yActive = settings['yActive']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._yActive = 480 #Dimension of active sensors in the y direction in pixels, per datasheet
-
+            self._yActive = 480 
+            
+        #Define the frame size in the x dimension in pixels, per selected camera mode
         try:
             self._xRange = settings['xRange']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._xRange = 240 #Frame size in the x dimension in pixels, per selected camera mode
+            self._xRange = 240 
 
+        #Define the frame size in the y dimension in pixels, per selected camera mode
         try:
             self._yRange = settings['yRange']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._yRange = 240 #Frame size in the y dimension in pixels, per selected camera mode
+            self._yRange = 240 
 
+        #Define the offset value in the x dimension
         try:
             self._xOff = settings['xOff']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._xOff = self._xRange/2 #Offset value in the x dimension
+            self._xOff = self._xRange/2 
 
+        #Define the offset value in the y dimension
         try:
             self._yOff = settings['yOff']
         except KeyError:
             #If the dictionary value is not present, use defaults
-            self._yOff = self._yRange/2 #Offset value in the y dimension
-        
-        #Define/Manage Serial connection
-        self._camera = None
+            self._yOff = self._yRange/2 
+
+        #End definitions of values to allow for pixel to world coordinate conversion
+
+        #Begin definitions of values to manage/enable serial connection to the camera
+        #Define the initial string values expected from the camera
         try:
             self._cameraInitValue = settings['cameraInitValue']
         except KeyError:
             #If the dictionary value is not present, use defaults
             self._cameraInitValue = '{904$904}\r\n'
 
+        #Define the string that will be sent to the camera to start operations
         try:
             self._cameraStartString = settings['cameraStartString']
         except KeyError:
             #If the dictionary value is not present, use defaults
             self._cameraStartString = 'start'
 
+        #Define limiters used to parse the serial data for coordinate values
         try:
             self._serialLimiters = settings['serialLimiters']
         except KeyError:
             #If the dictionary value is not present, use defaults
             self._serialLimiters = ['{','$','}']
 
+        #End definitions of values to manage/enable serial connection to the camera
+        
+        #Create camera serial connection
+        self._camera = None
         while(self._getCameraSerialConnection(cameraInitValue) == None):{"""Do Nothing"""}
         self._camera = serial.Serial(port=self._getCameraSerialConnection(cameraInitValue))
+
+        #Send start string to camera value to begin operations
+        self._camera.write(self._cameraStartString.encode())
 
 
     def _getUAVPosition(self):
