@@ -46,25 +46,35 @@ class LandingPlatformController():
                 sys.exit(0)
             else:
                 print("LPC: __init__ - Landing Platform Controller requires a UAV control object.", file=self._debugFile)
-        
+
+        #Define UAV velocity in meters per second
         try:
             self._uavVelocity = settings['velocity']
         except KeyError:
             #If the dictionary value is not present, use defaults
             self._uavVelocity = 0.2 
 
+        #Define starting hover height for UAV
         try:
             self._hoverHeight = settings['hoverHeight']
         except KeyError:
             #If the dictionary value is not present, use defaults
             self._hoverHeight = 0.5
-
+            
+        #Define the minimum hover height for UAV
         try:
             self._minHoverHeight = settings['minHoverHeight']
         except KeyError:
             #If the dictionary value is not present, use defaults
             self._minHoverHeight = self._hoverHeight - self._hoverHeight/10
 
+        #Define the maximum hover height for the UAV
+        try:
+            self._maxHoverHeight = settings['maxHoverHeight']
+        except KeyError:
+            self._maxHoverHeight = 3
+            
+        #Define the landing position world coordinates in meters
         try:
             self._landingPos = settings['landingPos']
         except KeyError:
@@ -122,9 +132,21 @@ class LandingPlatformController():
             #If the dictionary value is not present, use defaults
             self._onTargetOffset = 1.8
 
+        #Define a floating point value that determines the UAV boundary offset
+        try:
+            self._boundaryOffset = settings['boundaryOffset']
+        except KeyError:
+            self._boundaryOffset = 0.2
+            
         #End definition of class tolerance/accuracy values
 
         #Begin definitions of values to allow for pixel to world coordinate conversion
+        #Define the view angle of the camera in radians
+        try:
+            self._viewAngle = settings['viewAngle']
+        except KeyError:
+            self._viewAngle = 2.96706
+            
         #Define the focal length of lens in meters, per datasheet
         try:
             self._focalLength = settings['focalLength']
@@ -558,6 +580,25 @@ class LandingPlatformController():
         if(maxOffset > offsetMag):
             return True
         return False
+
+    def _uavInBoundary(self, position):
+        """
+        Function: _uavOnTarget
+        Purpose: Determine if the UAV is within the target area for its specific height
+        Inputs: positionVector - a list of floating point values representing the <x, y> position of the UAV
+        Outputs: a boolean value indicating whether the UAV is within the boundary area for its specific height
+        Description:
+        """
+        #Calculate the boundary radius by using the viewing angle and the maxHoverHeight to create a triangle
+        boundaryRadius = math.tan(self._viewAngle/2)*self._maxHoverHeight - self._boundaryOffset
+
+        #Calculate the positional radius from the center by calculating the magnitude of the x,y vector
+        positionRadius = math.sqrt(math.pow(postion[0],2) + math.pow(position[1],2))
+
+        #If the position is outside boundary, return false. Otherwise, true.
+        if(positionRadius > boundaryRadius):
+            return False
+        return True
 
     def _createCoordinateTransform(self, startPosition, expectedPosition, endPosition):
         """
