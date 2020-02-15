@@ -311,9 +311,11 @@ class LandingPlatformController():
         """
         #Find the default value for the camera, this indicates non-detectionx
         xValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[0])+1:self._cameraInitValue.rfind(self._serialLimiters[1])])
+        yValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[1])+1:self._cameraInitValue.rfind(self._serialLimiters[2])])
         
         #Create blank arrays
         xPoints = [xValDummy]
+        yPoints = [yValDummy]
         inFrame = False
 
         #Flush serial buffer to insure that most recent data points are grabbed
@@ -330,23 +332,26 @@ class LandingPlatformController():
             
             #If a proper position string was grabbed, process it
             if(len(posString) > 0):
-                if(posString[0] == '{'):                    
-                    #Find the limiter positions to properly split string into x & y components
+                if(posString[0] == self._serialLimiters[0]):                    
                     initIndex=posString.rfind(self._serialLimiters[0])
                     splitIndex=posString.rfind(self._serialLimiters[1])
                     lastIndex=posString.rfind(self._serialLimiters[2])
             
                     #Convert both positions to integer values
                     xPos = int(posString[(initIndex+1):splitIndex])
+                    yPos = int(posString[(splitIndex+1):lastIndex])
                     
                     #Append to list for potential averaging
                     xPoints.append(xPos)
+                    yPoints.append(yPos)
             else:
                 #If a proper value was not found, flush the input buffer again
                 self._camera.reset_input_buffer()
 
         print("LPC: _uavInFrame - xPoints =" + str(xPoints), file=self._debugFile)
-        if(xPoints.count(xValDummy) <= len(xPoints)*self._cameraInFrameThreshold):
+        print("LPC: _uavInFrame - yPoints =" + str(yPoints), file=self._debugFile)
+        
+        if(xPoints.count(xValDummy) <= len(xPoints)*self._cameraInFrameThreshold and yPoints.count(yValDummy) <= len(yPoints)*self._cameraInFrameThreshold):
             inFrame = True
             
         return inFrame
@@ -394,7 +399,7 @@ class LandingPlatformController():
         Outputs: a floating point value representing the z-coordinate 
         Description:
         """
-        #Will want to figure out how to read UAV height from logs as this is a terrible way to go about it. 
+        self._hoverHeight = self._uav.getHeight()
         return self._hoverHeight
 
     def _sendMovement(self, xDis, yDis, zDis):
@@ -408,7 +413,7 @@ class LandingPlatformController():
         Description:
         """
         #If there is a movement to make
-        if( (xDis+yDis+zDis) != 0):
+        if( (xDis+yDis+zDis) != 0 and (zDis + self._hoverHeight) <= self._maxHoverHeight):
             #Send movement to UAV, UAV controller class will delay an appropriate time while the UAV moves
             self._uav.move(xDis, yDis, zDis, self._uavVelocity)
             #Update hover height
@@ -442,8 +447,7 @@ class LandingPlatformController():
 
         #Instruct UAV to move distances determined
         self._sendMovement(distances[0], distances[1], distances[2])
-        #Update hover height
-        self._hoverHeight += distances[2]
+        
         #To prevent leaving of the camera frame, reduce previous movement by 10% if UAV is not in frame
         while(self._uavInFrame() == False and (distances[0]+distances[1]+distances[2]) != 0):
             print("LPC: _sendToHome - UAV Not in Frame", file=self._debugFile)
@@ -496,7 +500,9 @@ class LandingPlatformController():
             if(temp != None):
                 startPos = temp.copy()
             print("LPC: _performLandingSequence - startPos1 =" + str(startPos), file=self._debugFile)
-                    
+
+            if():
+            
             offset = self._calculateOffset()
             print("LPC: _performLandingSequence - Offset =" + str(offset), file=self._debugFile)
             
