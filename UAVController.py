@@ -11,7 +11,7 @@ from cflib.crazyflie.log import LogConfig, Log, LogVariable
         
 class UAVController():
 
-    def __init__(self):
+    def __init__(self, targetURI=None):
         """
         Function: __init__
         Purpose: Initialize all necessary UAV functionality
@@ -38,7 +38,16 @@ class UAVController():
                 self.available = cflib.crtp.scan_interfaces()            
 
         if(len(self.available) > 0):
-            self.UAV.open_link(self.available[0][0])
+            if(targetURI != None):
+                for i in range(len(self.available)):
+                    if(self.available[i][0] == targetURI):
+                        self.UAV.open_link(self.available[i][0])
+                        self.connectedToTargetUAV = True
+                    else:
+                        self.connectedToTargetUAV = False
+            else:
+                self.UAV.open_link(self.available[0][0])
+            
             while(self.UAV.is_connected() == False): time.sleep(0.1)
             self.MC = MotionCommander(self.UAV)
             #Create desired logging parameters
