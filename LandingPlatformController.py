@@ -18,11 +18,10 @@ class LandingPlatformController():
         Outputs: None
         Description: 
         """
-
-        #Create a file descriptor object that can then be written to for debug messages
+        #Create a file descriptor object that can then be written for debug messages
         try:
             self._debugFile = open(settings['debugFile'], 'w')
-        except KeyError:
+        except (TypeError, KeyError):
             if(debug == True):
                 self._debugFile = sys.stdout
             else:
@@ -36,48 +35,46 @@ class LandingPlatformController():
 
         #Define default UAV offset angle value
         self._uavOffsetAngle = 0 #in radians
-    
+
         #Define class constants necessary for UAV 
         try:
             self._uav = settings['uav']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, print warning message.
-            if(debug == False):
-                sys.exit(0)
-            else:
-                print("LPC: __init__ - Landing Platform Controller requires a UAV control object.", file=self._debugFile)
-
+            print("LPC: __init__ - Landing Platform Controller requires a UAV control object.", file=self._debugFile)
+            sys.exit(0)
+           
         #Define UAV velocity in meters per second
         try:
             self._uavVelocity = settings['velocity']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._uavVelocity = 0.2 
 
         #Define starting hover height for UAV
         try:
             self._hoverHeight = settings['hoverHeight']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._hoverHeight = 0.5
             
         #Define the minimum hover height for UAV
         try:
             self._minHoverHeight = settings['minHoverHeight']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._minHoverHeight = self._hoverHeight - self._hoverHeight/10
 
         #Define the maximum hover height for the UAV
         try:
             self._maxHoverHeight = settings['maxHoverHeight']
-        except KeyError:
+        except (TypeError, KeyError):
             self._maxHoverHeight = 3
             
         #Define the landing position world coordinates in meters
         try:
             self._landingPos = settings['landingPos']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._landingPos = [0, 0, 0]
 
@@ -86,57 +83,58 @@ class LandingPlatformController():
         #Define a number of points the camera will sample each pass
         try:
             self._cameraAccuracy = settings['cameraAccuracy']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._cameraAccuracy = 15 
 
         #Define a number of points camera will use to determine if UAV is in frame
         try:
             self._cameraInFrameAccuracy = settings['cameraInFrameAccuracy']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._cameraInFrameAccuracy = 5 
 
         #Define a percentage of points at which the UAV is considered 'in frame'
         try:
             self._cameraInFrameThreshold = settings['cameraInFrameThreshold']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._cameraInFrameThreshold = 0.5
 
         #Define the magnitude an offset vector needs to overcome to be considered valid
         try:
             self._uavLandingTolerance = settings['uavLandingTolerance']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._uavLandingTolerance = 0.1 
 
         #Define a value used to determine if a new coordinate transform is necessary
         try:
             self._coordTolerance = settings['coordTolerance']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._coordTolerance = 0.05 
 
         #Define an integer value that determines the factor of the logarithmic function that determines if the UAV is on target
         try:
             self._onTargetFactor = settings['onTargetFactor']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._onTargetFactor = 12 
 
         #Define a floating point value that determines the height offset
         try:
             self._onTargetOffset = settings['onTargetOffset']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._onTargetOffset = 1.8
 
         #Define a floating point value that determines the UAV boundary offset
         try:
             self._boundaryOffset = settings['boundaryOffset']
-        except KeyError:
-            self._boundaryOffset = 0.2
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._boundaryOffset = 0.5
             
         #End definition of class tolerance/accuracy values
 
@@ -144,83 +142,83 @@ class LandingPlatformController():
         #Define the view angle of the camera in radians
         try:
             self._viewAngle = settings['viewAngle']
-        except KeyError:
+        except (TypeError, KeyError):
             self._viewAngle = 2.96706
             
         #Define the focal length of lens in meters, per datasheet
         try:
             self._focalLength = settings['focalLength']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._focalLength = 0.00265 
 
         #Define the sensor x-size in meters, per datasheet
         try:
             self._xImage = settings['xImage']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._xImage = 0.003984 
 
         #Define the sensor y-size in meters, per datasheet
         try:
             self._yImage = settings['yImage']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._yImage = 0.002952 
 
         #Define the sensor x-size in pixels, per datasheet
         try:
             self._xSensor = settings['xSensor']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._xSensor = 656
 
         #Define the sensor y-size in pixels, per datasheet
         try:
-            self._ySensor = setting['xSensor']
-        except KeyError:
+            self._ySensor = settings['xSensor']
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._ySensor = 488 
 
         #Define the dimension of active sensors in the x direction in pixels, per datasheet
         try:
             self._xActive = settings['xActive']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._xActive = 640 
 
         #Define the dimension of active sensors in the y direction in pixels, per datasheet
         try:
             self._yActive = settings['yActive']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._yActive = 480 
             
         #Define the frame size in the x dimension in pixels, per selected camera mode
         try:
             self._xRange = settings['xRange']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._xRange = 240 
 
         #Define the frame size in the y dimension in pixels, per selected camera mode
         try:
             self._yRange = settings['yRange']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._yRange = 240 
 
         #Define the offset value in the x dimension
         try:
             self._xOff = settings['xOff']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._xOff = self._xRange/2 
 
         #Define the offset value in the y dimension
         try:
             self._yOff = settings['yOff']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._yOff = self._yRange/2 
 
@@ -230,21 +228,28 @@ class LandingPlatformController():
         #Define the initial string values expected from the camera
         try:
             self._cameraInitValue = settings['cameraInitValue']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._cameraInitValue = '{904$904}\r\n'
 
+        #Define the string values expected from the camera when the UAV is not in frame
+        try:
+            self._cameraOutOfFrameValue = settings['cameraOutOfFrameValue']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._cameraOutOfFrameValue = '{900$900}\r\n'
+        
         #Define the string that will be sent to the camera to start operations
         try:
             self._cameraStartString = settings['cameraStartString']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._cameraStartString = 'start'
 
         #Define limiters used to parse the serial data for coordinate values
         try:
             self._serialLimiters = settings['serialLimiters']
-        except KeyError:
+        except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._serialLimiters = ['{','$','}']
 
@@ -252,8 +257,8 @@ class LandingPlatformController():
         
         #Create camera serial connection
         self._camera = None
-        while(self._getCameraSerialConnection(cameraInitValue) == None):{"""Do Nothing"""}
-        self._camera = serial.Serial(port=self._getCameraSerialConnection(cameraInitValue))
+        while(self._getCameraSerialConnection(self._cameraInitValue) == None):{"""Do Nothing"""}
+        self._camera = serial.Serial(port=self._getCameraSerialConnection(self._cameraInitValue))
 
         #Send start string to camera value to begin operations
         self._camera.write(self._cameraStartString.encode())
@@ -270,8 +275,8 @@ class LandingPlatformController():
             return 
         
         #Find the default value for the camera, this indicates non-detection
-        xValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[0])+1:self._cameraInitValue.rfind(self._serialLimiters[1])])
-        yValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[1])+1:self._cameraInitValue.rfind(self._serialLimiters[2])])
+        xValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[0])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])])
+        yValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[2])])
         
         #Get update height
         self._uavPos[2] = self._uavGetHeight()
@@ -332,8 +337,8 @@ class LandingPlatformController():
         Description:
         """
         #Find the default value for the camera, this indicates non-detectionx
-        xValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[0])+1:self._cameraInitValue.rfind(self._serialLimiters[1])])
-        yValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[1])+1:self._cameraInitValue.rfind(self._serialLimiters[2])])
+        xValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[0])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])])
+        yValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[2])])
         
         #Create blank arrays
         xPoints = [xValDummy]
@@ -485,9 +490,12 @@ class LandingPlatformController():
         Outputs: None
         Description:
         """
+        print("LPC: engageFlightRoutine - Beginning", file=self._debugFile)
         self._uav.launch()
         while(self._uavInFrame() == False):
+            print("LPC: engageFlightRoutine - UAV going up", file=self._debugFile)
             self._sendMovement(0, 0, 0.5)
+        print("LPC: engageFlightRoutine - Ending", file=self._debugFile)
         self._performLandingSequence()
         return
 
@@ -523,7 +531,9 @@ class LandingPlatformController():
                 startPos = temp.copy()
             print("LPC: _performLandingSequence - startPos1 =" + str(startPos), file=self._debugFile)
 
-            if():
+            if(self._uavInBoundary == False):
+                #self._moveUAVInsideBoundary(startPos)
+                print("LPC: _performLandingSequence - UAV not in boundary")
             
             offset = self._calculateOffset()
             print("LPC: _performLandingSequence - Offset =" + str(offset), file=self._debugFile)
@@ -596,10 +606,13 @@ class LandingPlatformController():
         """
         #Calculate the boundary radius by using the viewing angle and the maxHoverHeight to create a triangle
         boundaryRadius = math.tan(self._viewAngle/2)*self._maxHoverHeight - self._boundaryOffset
-
+        
         #Calculate the positional radius from the center by calculating the magnitude of the x,y vector
         positionRadius = math.sqrt(math.pow(postion[0],2) + math.pow(position[1],2))
 
+        print("LPC: _uavInBoundary - boundaryRadius = " + str(boundaryRadius), file=self._debugFile)
+        print("LPC: _uavInBoundary - positionRadius = " + str(positionRadius), file=self._debugFile)
+        
         #If the position is outside boundary, return false. Otherwise, true.
         if(positionRadius > boundaryRadius):
             return False
