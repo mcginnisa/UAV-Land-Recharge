@@ -622,7 +622,7 @@ class LandingPlatformController():
         Description:
         """
         #Calculate the boundary radius by using the viewing angle and the maxHoverHeight to create a triangle
-        boundaryRadius = math.tan(self._viewAngle/2)*self._maxHoverHeight - self._boundaryOffset
+        boundaryRadius = math.tan(self._viewAngle/2)*self._hoverHeight - self._boundaryOffset
         
         #Calculate the positional radius from the center by calculating the magnitude of the x,y vector
         positionRadius = math.sqrt(math.pow(position[0],2) + math.pow(position[1],2))
