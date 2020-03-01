@@ -28,14 +28,22 @@ class LandingPlatformController():
             else:
                 self._debugFile = open('/dev/null', 'w')
 
-        GPIO.setmode(GPIO.BCM)
-        
+        #Define value that corresponds to camera power control pin
         try:
-            #Some setup
-            print("True")
+            self._cameraPowerPin = settings["cameraPowerPin"]
         except (TypeError, KeyError):
-            
-                
+            self._cameraPowerPin = 7
+
+        #Define value that corresponds to Qi pad power control pin
+        try:
+            self._padPowerPin = settings["padPowerPin"]
+        except (TypeError, KeyError):
+            self._padPowerPin = 8
+
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(self._cameraPowerPin, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(self._padPowerPin, GPIO.OUT, initial=GPIO.LOW)
+        
         #Define boolean values used for flagging errors
         self._updatedPosition = False
 
@@ -724,6 +732,13 @@ class LandingPlatformController():
         Outputs: A string that represents the port that has the camera connection
         Note: Performs a priming read which will discard the first value sent.
         """
+        
+        #Turn the camera off, then on again to enter initial setup state
+        self._setCameraPin(0)
+        time.sleep(0.2)
+        self._setCameraPin(1)
+        time.sleep(0.5)
+        
         #Create a blank camera port
         cameraPort = None
         
@@ -782,11 +797,22 @@ class LandingPlatformController():
             
         return availablePorts
 
-    def _toggleCameraPower(self):
+    def _setCameraPin(self, state):
         """
         Function: _toggleCameraPower
         Purpose: Toggles the RaspberryPi pin that corresponds to the power control for camera
-        Inputs: none
+        Inputs: state - an integer value representing on (1) or off (0)
         Outputs: none
         """
-        
+        GPIO.output(self._cameraPowerPin, state)
+        return
+
+    def _setPadPin(self, state):
+        """
+        Function: _togglePadPower
+        Purpose: Toggles the RaspberryPi pin that corresponds to the power control for Qi pad
+        Inputs: state - an integer value representing on (1) or off (0)
+        Outputs: none
+        """
+        GPIO.output(self._padPowerPin, state)
+        return
