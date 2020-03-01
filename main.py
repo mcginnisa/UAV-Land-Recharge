@@ -7,7 +7,7 @@ import time
 
 LPC = None
 
-def signallHandler(sig, frame):
+def signalHandler(sig, frame):
     global LPC
     if(LPC != None):
         LPC.done()
@@ -23,9 +23,14 @@ def main():
         UAV = UAVController()
     print("MAIN: UAV Connected, Initializing Landing Platform Controller")        
     LPC = None
+    settingsArray = dict()
+    settingsArray['uav'] = UAV
     while(LPC == None):
-        LPC = LandingPlatformController(UAV, debug=True)
+        LPC = LandingPlatformController(settings=settingsArray, debug=True)
     print("MAIN: Landing Platform Controller Initialized")
+    #LPC._sendMovement(0,0,0.8)
+    #while(True):
+    #    LPC._uavInBoundary(LPC._getUAVPosition())
     LPC.engageFlightRoutine()
     LPC.done()
 
