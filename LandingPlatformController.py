@@ -3,6 +3,7 @@ import sys
 import glob
 import math
 import time
+import RPi.GPIO as GPIO
 
 class LandingPlatformController():
     
@@ -26,7 +27,15 @@ class LandingPlatformController():
                 self._debugFile = sys.stdout
             else:
                 self._debugFile = open('/dev/null', 'w')
+
+        GPIO.setmode(GPIO.BCM)
         
+        try:
+            #Some setup
+            print("True")
+        except (TypeError, KeyError):
+            
+                
         #Define boolean values used for flagging errors
         self._updatedPosition = False
 
@@ -134,7 +143,7 @@ class LandingPlatformController():
             self._boundaryOffset = settings['boundaryOffset']
         except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
-            self._boundaryOffset = 0.5
+            self._boundaryOffset = 0.1
             
         #End definition of class tolerance/accuracy values
 
@@ -531,7 +540,7 @@ class LandingPlatformController():
                 startPos = temp.copy()
             print("LPC: _performLandingSequence - startPos1 =" + str(startPos), file=self._debugFile)
 
-            if(self._uavInBoundary == False):
+            if(self._uavInBoundary(startPos) == False):
                 #self._moveUAVInsideBoundary(startPos)
                 print("LPC: _performLandingSequence - UAV not in boundary")
             
@@ -608,7 +617,7 @@ class LandingPlatformController():
         boundaryRadius = math.tan(self._viewAngle/2)*self._maxHoverHeight - self._boundaryOffset
         
         #Calculate the positional radius from the center by calculating the magnitude of the x,y vector
-        positionRadius = math.sqrt(math.pow(postion[0],2) + math.pow(position[1],2))
+        positionRadius = math.sqrt(math.pow(position[0],2) + math.pow(position[1],2))
 
         print("LPC: _uavInBoundary - boundaryRadius = " + str(boundaryRadius), file=self._debugFile)
         print("LPC: _uavInBoundary - positionRadius = " + str(positionRadius), file=self._debugFile)
@@ -674,10 +683,11 @@ class LandingPlatformController():
         print("LPC: _alignUAV - (magE, magA, magD) =" + str(magnitudeExpected) + "," + str(magnitudeActual) + "," + str(magnitudeDiff), file=self._debugFile)
         print("LPC: _alignUAV - internalVal =" + str(internalVal), file=self._debugFile)
         print("LPC: _alignUAV - angle =" + str(angle), file=self._debugFile)
+        print("LPC: _alignUAV - _uavOffsetAngle =" + str(self._uavOffsetAngle), file=self._debugFile)
 
         #Reduce angle to below 360 while preserving original sign value
         #This step is likely unnecessary as math.cos should return a value from zero to two pi
-        angle = (angle/math.fabs(angle))*(math.fabs(angle)%360)
+        #angle = (angle/math.fabs(angle))*(math.fabs(angle)%360)
 
         #Reduce the angle to below 180 while preserving original sign value
         if(angle > 180):
@@ -685,7 +695,8 @@ class LandingPlatformController():
         elif(angle < -180):
             angle = angle + 360
 
-        self._uav.rotate(angle)
+        self._uav.rotate(self._uavOffsetAngle)
+        self._uavOffsetAngle = 0
 
         #After alignment, if the UAV is not inside the vision cone, increase the height to preserve <x, y> position
         #Will need to make this error correction more robust to account for maximum height limitations
@@ -770,3 +781,12 @@ class LandingPlatformController():
                 pass
             
         return availablePorts
+
+    def _toggleCameraPower(self):
+        """
+        Function: _toggleCameraPower
+        Purpose: Toggles the RaspberryPi pin that corresponds to the power control for camera
+        Inputs: none
+        Outputs: none
+        """
+        
