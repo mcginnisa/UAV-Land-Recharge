@@ -80,7 +80,7 @@ class LandingPlatformController():
             self._minHoverHeight = settings['minHoverHeight']
         except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
-            self._minHoverHeight = self._hoverHeight - self._hoverHeight/10
+            self._minHoverHeight = self._hoverHeight - self._hoverHeight*0.5
 
         #Define the maximum hover height for the UAV
         try:
@@ -118,19 +118,12 @@ class LandingPlatformController():
             #If the dictionary value is not present, use defaults
             self._cameraInFrameThreshold = 0.5
 
-        #Define the magnitude an offset vector needs to overcome to be considered valid
-        try:
-            self._uavLandingTolerance = settings['uavLandingTolerance']
-        except (TypeError, KeyError):
-            #If the dictionary value is not present, use defaults
-            self._uavLandingTolerance = 0.1 
-
         #Define a value used to determine if a new coordinate transform is necessary
         try:
             self._coordTolerance = settings['coordTolerance']
         except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
-            self._coordTolerance = 0.05 
+            self._coordTolerance = 0.01 
 
         #Define an integer value that determines the factor of the logarithmic function that determines if the UAV is on target
         try:
@@ -144,7 +137,7 @@ class LandingPlatformController():
             self._onTargetOffset = settings['onTargetOffset']
         except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
-            self._onTargetOffset = 1.8
+            self._onTargetOffset = 2.0
 
         #Define a floating point value that determines the UAV boundary offset
         try:
@@ -271,7 +264,12 @@ class LandingPlatformController():
             self._serialLimiters = ['{','$','}']
 
         #End definitions of values to manage/enable serial connection to the camera
-        
+
+        #Turn the camera off, then on again to enter initial setup state
+        self._setCameraPin(1)
+        for i in range(5,0,-1):
+            time.sleep(1) #Sleep to allow the OS to setup USB
+                
         #Create camera serial connection
         self._camera = None
         while(self._getCameraSerialConnection(self._cameraInitValue) == None):{"""Do Nothing"""}
@@ -622,7 +620,7 @@ class LandingPlatformController():
         Description:
         """
         #Calculate the boundary radius by using the viewing angle and the maxHoverHeight to create a triangle
-        boundaryRadius = math.tan(self._viewAngle/2)*self._hoverHeight - self._boundaryOffset
+        boundaryRadius = min(self._pixelConversion(255,255,self._hoverHeight))
         
         #Calculate the positional radius from the center by calculating the magnitude of the x,y vector
         positionRadius = math.sqrt(math.pow(position[0],2) + math.pow(position[1],2))
@@ -732,13 +730,7 @@ class LandingPlatformController():
         Outputs: A string that represents the port that has the camera connection
         Note: Performs a priming read which will discard the first value sent.
         """
-        
-        #Turn the camera off, then on again to enter initial setup state
-        self._setCameraPin(0)
-        time.sleep(0.2)
-        self._setCameraPin(1)
-        time.sleep(0.5)
-        
+               
         #Create a blank camera port
         cameraPort = None
         
@@ -747,16 +739,18 @@ class LandingPlatformController():
         
         #For all ports returned, create a test connection and look for expected values
         for port in availablePorts:
+            
             test = serial.Serial(port, timeout=0.01)
             timeoutCount = 0
             while(test.read(1).decode('ascii') != expectedVals[-1] and timeoutCount <= len(expectedVals)*4):
                 timeoutCount += 1
+                
             if(test.read(len(expectedVals)).decode('ascii') == expectedVals):
                 #If expected values are found, assign the string value of the port
                 cameraPort = port
-            
-            test.close()
         
+            test.close()
+                
         #Return the last found serial connection as a string value
         return cameraPort
         
