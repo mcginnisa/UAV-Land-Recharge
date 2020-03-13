@@ -158,13 +158,7 @@ class UAVController():
         """
         retVal = None
         if(self._recentDataPacket != None and self._receivingDataPacket == False):
-            retVal = self._recentDataPacket["pm.vbat"]
-            endTime = time.time()
-            diff= endTime - self._startTime
-            print("Trial: " + str(self._trialRun) + "," + str(time.time() - self._startTime),file=self.FD)
-            self._trialRun += 1
-            self._startTime = end
-            
+            retVal = self._recentDataPacket["pm.vbat"]      
             
         return retVal
 
