@@ -21,13 +21,11 @@ def main():
     while(UAV == None):
         UAV = UAVController()
     print("MAIN: UAV Connected, Initializing Landing Platform Controller")
-    start = time.time()
-    while(True):
-        print(UAV.getHeight(),UAV.getBatteryLevel())
-        print("UPDATED",time.time() - start)
-        time.sleep(0.1)
-    #print(UAV.getBatteryLevel())
-        
+    while(UAV.getBatteryLevel() == None):{}
+    print("MAIN: UAV Battery Voltage found")
+    for _ in range(1000):
+        UAV.getBatteryLevel()
+    UAV.done()
 #    LPC = None
 #    while(LPC == None):
 #        LPC = LandingPlatformController(UAV)
