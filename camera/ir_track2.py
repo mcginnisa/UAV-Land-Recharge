@@ -1,3 +1,11 @@
+'''
+If there are >3 points, it will report an error (901). 
+If there <1 point, it will report nothing (900),
+If there is one point, it will report that point
+If there are two points, it will report midpoint between the two points
+If there are 3 points, it will report midpoint between two most distant points (ignoring the flash from the flow deck)
+
+'''
 
 import sensor, image, pyb, os, time
 from pyb import USB_VCP
