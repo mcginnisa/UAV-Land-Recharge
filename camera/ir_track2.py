@@ -1,5 +1,4 @@
 
-
 import sensor, image, pyb, os, time
 from pyb import USB_VCP
 
@@ -28,25 +27,6 @@ def pad_with_0(string_to_pad, target_length):
 #print pad_with_n_chars("doggy",9,"y")
 
 
-
-TRIGGER_THRESHOLD = 5
-
-#width_frame = 320 #max for QVGA 320
-#height_frame = 240 #max for QVGA 240
-#width_frame = int(240) #max for QVGA 320
-#height_frame = int(240) #max for QVGA 240
-
-#sensor.reset() # Initialize the camera sensor.
-#sensor.set_pixformat(sensor.GRAYSCALE) # or sensor.GRAYSCALE RGB565
-#sensor.set_framesize(sensor.QVGA) # or sensor.QQVGA (or others)
-#sensor.set_windowing((width_frame, height_frame)) # look at center 240x240 pixels of the VGA resolution.
-
-#sensor.skip_frames(time = 200) # Let new settings take affect.
-#sensor.set_auto_whitebal(False) # Turn off white balance.
-#sensor.set_auto_gain(False)
-
-
-
 thresholds = (255, 255) # thresholds for bright white light from IR.
 
 sensor.reset()
@@ -59,6 +39,8 @@ sensor.set_auto_whitebal(False) # must be turned off for color tracking
 clock = time.clock()
 
 
+#If you lose the crazyflie at high altitude, increase this number
+#0.01 is a good value for infrared. Set to 1 to see background and pickup ceiling lights
 EXPOSURE_TIME_SCALE = 0.01
 
 current_exposure_time_in_microseconds = sensor.get_exposure_us()
@@ -68,29 +50,14 @@ sensor.set_auto_exposure(False, \
 
 
 
-
 clock = time.clock() # Tracks FPS.
 
-# Take from the main frame buffer's RAM to allocate a second frame buffer.
-# There's a lot more RAM in the frame buffer than in the MicroPython heap.
-# However, after doing this you have a lot less RAM for some algorithms...
-# So, be aware that it's a lot easier to get out of RAM issues now. However,
-# frame differencing doesn't use a lot of the extra space in the frame buffer.
-# But, things like AprilTags do and won't work if you do this...
-#extra_fb = sensor.alloc_extra_fb(sensor.width(), sensor.height(), sensor.GRAYSCALE)
-#extra_fb = sensor.alloc_extra_fb(width_frame, height_frame, sensor.GRAYSCALE)
-
-'''
-print("About to save background image...")
-sensor.skip_frames(time = 200) # Give the user time to get ready.
-extra_fb.replace(sensor.snapshot())
-print("Saved background image - Now frame differencing!")
-'''
 
 usb = USB_VCP()
 
 #Send standby code (904) until RasPi gives the go ahead
 #comment out this while loop to start the camera spamming coords by default
+'''
 while(True):
     red_led.off()
     green_led.on()
@@ -101,56 +68,67 @@ while(True):
     if (cmd == b'start'):
         cmd = "0"
         break
-
-
+'''
 
 while(True):
     #clock.tick()
     img = sensor.snapshot()
     blobs = img.find_blobs([(240, 255)], pixels_threshold=1, area_threshold=1, merge=False, margin=50) #red blobs
-    #if len(blobs) > 1:
-    #    print("More than one blob!")
+
+    if len(blobs) > 3:
+        raise_error()
+        continue
+    elif len(blobs) == 0:
+        print('{900$900}')
+        red_led.off()
+        blue_led.on()
+        green_led.off()
+        continue
+    else:
+        red_led.off()
+        blue_led.off()
+        green_led.on()
+
+
     blob_list = []
     for blob in blobs:
-        if len(blobs) > 3:
-            raise_error()
-        elif len(blobs) == 0:
-            print('{900$900}')
-            red_led.off()
-            blue_led.on()
-            green_led.off()
-        else:
-            red_led.off()
-            blue_led.off()
-            green_led.on()
-        RGBcolor = (255,255,255)
         xpos = blob.cx()
         ypos = blob.cy()
         img.draw_cross(xpos, ypos)
-        img.draw_circle(blob.enclosing_circle(),color=RGBcolor)
+        img.draw_circle(blob.enclosing_circle(),color=(255,255,255))
         coord = [xpos,ypos]
         blob_list.append(coord)
         #print(str(xpos) + ',' + str(ypos))
     if len(blob_list) > 2:
         #we picked up the flow deck, finding most distant points
-        ab=0
-        ac=0
-        bc=0
-        length_ab = ((blob_list[0][0]-blob_list[1][0])**2 + (blob_list[0][1]-blob_list[1][1])**2)**0.5
-        length_ac = ((blob_list[0][0]-blob_list[2][0])**2 + (blob_list[0][1]-blob_list[2][1])**2)**0.5
-        length_bc = ((blob_list[1][0]-blob_list[2][0])**2 + (blob_list[1][1]-blob_list[2][1])**2)**0.5
+
+        distance = [0,0,0]
+        #d=sqrt((x2-x1)^2+(y2-y1)^2)
+        #distance a to b
+        distance[2] = ((blob_list[0][0]-blob_list[1][0])**2 + (blob_list[0][1]-blob_list[1][1])**2)**0.5
+        #distance a to c
+        distance[1] = ((blob_list[0][0]-blob_list[2][0])**2 + (blob_list[0][1]-blob_list[2][1])**2)**0.5
+        #distance b to c
+        distance[0] = ((blob_list[1][0]-blob_list[2][0])**2 + (blob_list[1][1]-blob_list[2][1])**2)**0.5
+
         #sorting because micropython might not have sort
-        if length_ab >= length_ac:
-            if length_ab >= length_bc:
-                blob_list.pop(2)
-        elif length_ac >= length_ab:
-            if length_ac >= length_bc:
-                blob_list.pop(1)
-        elif length_bc >= length_ab:
-            if length_bc >= length_ac:
-                blob_list.pop(0)
+        max = distance[0]
+        #find the max in the list
+        for i in range(len(distance)):
+            if distance[i] >= max:
+                max = distance[i]
+        #delete the point which is not involved in the max distance. This works
+        #because of the ordering of the distance list
+        for i in range(len(distance)):
+            if distance[i] == max:
+                blob_list.pop(i)
+                break
+
     #midpoint = ((x1 + x2)/2, (y1 + y2)/2)
-    midpoint = ((blob_list[0][0] + blob_list[1][0])/2, (blob_list[0][1] + blob_list[2][2])/2)
-    xpos = pad_with_0(str(midpoint[0]),3)
-    ypos = pad_with_0(str(midpoint[1]),3)
+    if len(blob_list) > 1:
+        midpoint = ((blob_list[0][0] + blob_list[1][0])/2, (blob_list[0][1] + blob_list[1][1])/2)
+    else:
+        midpoint = blob_list[0]
+    xpos = pad_with_0(str(int(midpoint[0])),3)
+    ypos = pad_with_0(str(int(midpoint[1])),3)
     print('{' + xpos + '$' + ypos + '}')
