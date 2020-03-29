@@ -97,7 +97,7 @@ class LandingPlatformController():
 
         #Begin definition of class tolerance/accuracy values
 
-        #Define a number of points the camera will sample each pass
+        #Define a number of points the camera will sample to determine UAV position
         try:
             self._cameraAccuracy = settings['cameraAccuracy']
         except (TypeError, KeyError):
@@ -130,7 +130,7 @@ class LandingPlatformController():
             self._onTargetFactor = settings['onTargetFactor']
         except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
-            self._onTargetFactor = 12 
+            self._onTargetFactor = 10 
 
         #Define a floating point value that determines the height offset
         try:
@@ -510,7 +510,10 @@ class LandingPlatformController():
         while(self._uavInFrame() == False):
             print("LPC: engageFlightRoutine - UAV going up", file=self._debugFile)
             self._sendMovement(0, 0, 0.5)
-        print("LPC: engageFlightRoutine - Ending", file=self._debugFile)
+        if(self._uavInFrame() == False):
+            print("LPC: engageFlightRoutine - UAV Not in frame. Landing at current position.", file=self._debugFile)
+            return
+        print("LPC: engageFlightRoutine - Ending and beginning landing sequence.", file=self._debugFile)
         self._performLandingSequence()
         return
 
@@ -525,6 +528,7 @@ class LandingPlatformController():
         self._uav.land()
         self._uav.done()
         self._camera.close()
+        GPIO.cleanup()
         return
     
     def _performLandingSequence(self):
@@ -582,7 +586,8 @@ class LandingPlatformController():
             #Otherwise, move the UAV in the -Z direction
             else:
                 self._sendMovement(0, 0, 0.1*offset[2]) 
-            
+
+        self._sendMovement(0.2,0,0)
         #Perform Landing Operations Here
         self._uav.land()
         return

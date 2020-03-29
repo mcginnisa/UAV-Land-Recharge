@@ -26,11 +26,8 @@ def main():
     settingsArray = dict()
     settingsArray['uav'] = UAV
     while(LPC == None):
-        LPC = LandingPlatformController(settings=settingsArray, debug=True)
+        LPC = LandingPlatformController(settings=settingsArray, debug=False)
     print("MAIN: Landing Platform Controller Initialized")
-    #LPC._sendMovement(0,0,0.8)
-    #while(True):
-    #    LPC._uavInBoundary(LPC._getUAVPosition())
     LPC.engageFlightRoutine()
     LPC.done()
 
