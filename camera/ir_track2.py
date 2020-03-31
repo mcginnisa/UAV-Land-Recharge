@@ -1,5 +1,5 @@
 '''
-If there are >3 points, it will report an error (901). 
+If there are >3 points, it will report an error (901).
 If there <1 point, it will report nothing (900),
 If there is one point, it will report that point
 If there are two points, it will report midpoint between the two points
@@ -48,9 +48,8 @@ clock = time.clock()
 
 
 #If you lose the crazyflie at high altitude, increase this number
-#0.01 is a good value for infrared. Set to 1 to see background and pickup ceiling lights
-EXPOSURE_TIME_SCALE = 0.01
-
+#0.015 is a good value for infrared. Set to 1 to see background and pickup ceiling lights
+EXPOSURE_TIME_SCALE = 0.017
 current_exposure_time_in_microseconds = sensor.get_exposure_us()
 
 sensor.set_auto_exposure(False, \
@@ -65,7 +64,7 @@ usb = USB_VCP()
 
 #Send standby code (904) until RasPi gives the go ahead
 #comment out this while loop to start the camera spamming coords by default
-'''
+
 while(True):
     red_led.off()
     green_led.on()
@@ -76,7 +75,7 @@ while(True):
     if (cmd == b'start'):
         cmd = "0"
         break
-'''
+
 
 while(True):
     #clock.tick()

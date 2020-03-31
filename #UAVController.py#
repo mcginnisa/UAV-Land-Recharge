@@ -54,7 +54,6 @@ class UAVController():
             self.UAVLogConfig.add_variable('pm.batteryLevel', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.x', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.y', 'float')
-            self.UAVLogConfig.add_variable('pm.chargeCurrent', 'float')
             #Add more variables here for logging as desired
 
             self.UAV.log.add_config(self.UAVLogConfig)
