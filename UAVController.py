@@ -59,6 +59,7 @@ class UAVController():
             self.UAVLogConfig.add_variable('stateEstimate.x', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.y', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.z', 'float')
+            self.UAVLogConfig.add_variable('pm.chargeCurrent', 'float')
             #Add more variables here for logging as desired
 
             self.UAV.log.add_config(self.UAVLogConfig)
@@ -173,6 +174,20 @@ class UAVController():
         retVal = None
         if(self._recentDataPacket != None and self._receivingDataPacket == False):
             retVal = self._recentDataPacket["stateEstimate.z"]
+
+        return retVal
+
+    def isCharging(self):
+        """
+        Function: getCurrentHeight
+        Purpose: A function that reads the UAV height from a IOStream
+        Inputs: none
+        Outputs: none
+        Description: 
+        """
+        retVal = None
+        if(self._recentDataPacket != None and self._receivingDataPacket == False):
+            retVal = self._recentDataPacket["pm.chargeCurrent"]
 
         return retVal
         
