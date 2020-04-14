@@ -49,7 +49,7 @@ clock = time.clock()
 
 #If you lose the crazyflie at high altitude, increase this number
 #0.015 is a good value for infrared. Set to 1 to see background and pickup ceiling lights
-EXPOSURE_TIME_SCALE = 0.017
+EXPOSURE_TIME_SCALE = 0.04
 current_exposure_time_in_microseconds = sensor.get_exposure_us()
 
 sensor.set_auto_exposure(False, \
@@ -65,7 +65,7 @@ usb = USB_VCP()
 #Send standby code (904) until RasPi gives the go ahead
 #comment out this while loop to start the camera spamming coords by default
 
-while(True):
+while(False):
     red_led.off()
     green_led.on()
     blue_led.on()
@@ -75,7 +75,6 @@ while(True):
     if (cmd == b'start'):
         cmd = "0"
         break
-
 
 while(True):
     #clock.tick()
