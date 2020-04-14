@@ -20,6 +20,8 @@ class UAVController():
         """
 
         cflib.crtp.init_drivers()
+
+        self.FD = open("logFile.txt", "w")
      
         self.timeout = True
         self.available = []
@@ -52,10 +54,12 @@ class UAVController():
             self.MC = MotionCommander(self.UAV)
             #Create desired logging parameters
             self.UAVLogConfig = LogConfig(name = "UAVLog", period_in_ms=100)
-            self.UAVLogConfig.add_variable('pm.batteryLevel', 'float')
+            #self.UAVLogConfig.add_variable('pm.batteryLevel', 'float')
+            self.UAVLogConfig.add_variable('pm.vbat', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.x', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.y', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.z', 'float')
+            self.UAVLogConfig.add_variable('pm.chargeCurrent', 'float')
             #Add more variables here for logging as desired
 
             self.UAV.log.add_config(self.UAVLogConfig)
@@ -64,8 +68,9 @@ class UAVController():
                 self.UAVLogConfig.start()
             else:
                 logger.warning("Could not setup log configuration")
- 
-        
+
+        self._startTime = time.time() #For testing purposes
+        self._trialRun = 0
         #End of function
 
     def done(self):
@@ -154,7 +159,7 @@ class UAVController():
         """
         retVal = None
         if(self._recentDataPacket != None and self._receivingDataPacket == False):
-            retVal = self._recentDataPacket["pm.batteryLevel"]
+            retVal = self._recentDataPacket["pm.vbat"]      
             
         return retVal
 
@@ -171,6 +176,20 @@ class UAVController():
             retVal = self._recentDataPacket["stateEstimate.z"]
 
         return retVal
+
+    def isCharging(self):
+        """
+        Function: getCurrentHeight
+        Purpose: A function that reads the UAV height from a IOStream
+        Inputs: none
+        Outputs: none
+        Description: 
+        """
+        retVal = None
+        if(self._recentDataPacket != None and self._receivingDataPacket == False):
+            retVal = self._recentDataPacket["pm.chargeCurrent"]
+
+        return retVal
         
     def _getUAVDataPacket(self, ident, data, logconfig):
         """
@@ -184,4 +203,4 @@ class UAVController():
         """
         self._receivingDataPacket = True
         self._recentDataPacket = data
-        self._receivingDataPacket = False
+        self._receivingDataPacket = False 
