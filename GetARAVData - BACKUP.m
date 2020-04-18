@@ -1,8 +1,8 @@
 % GetARAVdata
 %% Script summary
 %
-% Author: Anthony Aboumrad
-% Date: 2 April 2020
+% Author: Ant8ony Aboumrad
+% Date: 17 April 2020
 % Project: Autonomous Recharging of Aerial Vehicles (ARAV)
 %
 % 'GetARAVdata' is a script that processes and visualizes data from an
@@ -16,6 +16,9 @@
 % below. A modification of worksheet names and/or data formatting may
 % produce runtime errors.
 %
+% The last portion of this script saves all generated figures as PNG files,
+% and requires a local subdirectory named "ARAV_figures/"
+%
 
 %% Retreive table data from worksheets
 
@@ -23,12 +26,11 @@ filename = 'Summary of Tests Conducted.xlsx';
 
 % Worksheet name definitions, uncomment as used, MUST VERIFY REGULARLY
 commandSheet = 'FT.1.1.1';
-% manLandAccSheet = 'FT.2.2.1';
-swLandAccSheet = 'FT.2.2.2';
+swLandAccSheet = 'FT.2.2.1';
 % chargeTimeSheet = 'FT.3.4.1';
-% camPowerSheet = 'FT.4.5.1';
+camPowerSheet = 'FT.4.5.1';
 % qiPowerSheet = 'FT.4.5.2';
-% sbcPowerSheet = 'FT.4.5.3';
+sbcPowerSheet = 'FT.4.5.3';
 % systemBattSheet = 'ST.4.5.1';
 % hoverEnduranceSheet = 'FT.5.6.1';
 % mobilityEnduranceSheet = 'FT.5.6.2';
@@ -39,8 +41,8 @@ detectionRangeSheet = 'FT.6.7.1';
 % anchorPointSheet = 'ST.10.10.1';
 % etc...
 
-sheetnames = {commandSheet, swLandAccSheet, landingDurationSheet, detectionRangeSheet;...
-    'commandResponse', 'swLandAcc', 'landingTime', 'detectionRange'};
+sheetnames = {commandSheet, swLandAccSheet, landingDurationSheet, detectionRangeSheet, camPowerSheet, sbcPowerSheet;...
+    'commandResponse', 'swLandAcc', 'landingTime', 'detectionRange', 'camPower', 'sbcPower'};
 
 % for each defined sheet, read one at a time and then close
 [~,numsheets]=size(sheetnames);
@@ -89,7 +91,7 @@ cl_plot.MarkerFaceColor='red';
 % figure formatting
 xlabel(clAx,'distance (m)')
 ylabel(clAx,'latency (ms)')
-title(clAx,{'UAV Command Latency vs Distance','(n = 450 for each trial)'})
+title(clAx,{'UAV Command Latency vs Distance','(n \geq 450 for each trial)'})
 ylim(clAx,[9.5,10.5])
 xlim(clAx,[-0.2,3.5])
 
@@ -106,11 +108,26 @@ for i=1:numcol
 end
 clear numcol i
 
+% get stats for Frame diff vs. IR accuracy mean and CI
+swLandStats = zeros(7,2);
+
+% default CI = 95% (alpha=0.05)
+[mean,sigma,meanCI,sigmaCI] = normfit(swLand_y2);
+swLandStats(1:6,1) = [mean sigma meanCI' sigmaCI']';
+[mean,sigma,meanCI,sigmaCI] = normfit(swLand_y3);
+swLandStats(1:6,2) = [mean sigma meanCI' sigmaCI']';
+% include sample size in stats array
+[swLandStats(7,1),~] = size(swLand_y2);
+[swLandStats(7,2),~] = size(swLand_y3);
+
+clear mean sigma meanCI sigmaCI
+
+
 % Plot no-feedback landing accuracy to histogram
 swLandFig_1 = figure;
 hold on
 h1_plot = histogram(swLand_y1);
-h1_plot.FaceColor = 'm';
+h1_plot.FaceColor = [0, 0.4470, 0.7410];
 h1_plot.Normalization = 'probability';
 h1_plot.BinWidth = 5;
 h1Ax = gca;
@@ -125,7 +142,7 @@ hold on
 %   Frame diff
 subplot(2,1,1)
 h2_plot = histogram(swLand_y2);
-h2_plot.FaceColor = 'c';
+h2_plot.FaceColor = [0, 0.4470, 0.7410];
 h2_plot.Normalization = 'probability';
 h2Ax = gca;
 [numrows,~] = size(swLand_y2);
@@ -134,7 +151,7 @@ ylim(h2Ax,[0,0.3])
 %   IR beacon
 subplot(2,1,2)
 h3_plot = histogram(swLand_y3);
-h3_plot.FaceColor = 'g';
+h3_plot.FaceColor = [0, 0.4470, 0.7410];
 h3_plot.Normalization = 'probability';
 h3Ax = gca;
 [numrows,~] = size(swLand_y3);
@@ -172,21 +189,22 @@ end
 clear numcol i mean sigma meanCI sigmaCI landingTime_y
 lt_errs = landingTimeStats(1,:)-landingTimeStats(3,:);
 
-% plot error bars for Landing times
+% plot bars for Landing times
 landingTimeFig = figure;
-lt_plot = bar(landingTimeStats(1,:));
+lt_plot = bar(landingTimeStats(1,:),'FaceColor',[0, 0.4470, 0.7410]);
+% lt_plot.FaceColor = [0, 0.4470, 0.7410];
 ltAx = gca;
 % figure formatting
 xticks(ltAx,[1 2])
-xticklabels(ltAx,{['Frame Diff (n = ' num2str(landingTimeStats(7,1)) ')'],...
-    ['Infrared LED (n = ' num2str(landingTimeStats(7,2)) ')']})
+xticklabels(ltAx,{['Frame Difference Detection (n = ' num2str(landingTimeStats(7,1)) ')'],...
+    ['Infrared LED Detection (n = ' num2str(landingTimeStats(7,2)) ')']})
 xlim(ltAx,[0.5 2.5])
 ylabel(ltAx,'duration (s)')
 title(ltAx,'Landing Sequence Duration vs Detection Algorithm')
 ylim(ltAx,[30,170])
 for i = 1:numel(xticks)
     text(i,landingTimeStats(1,i)+ 5,[num2str(round(landingTimeStats(1,i),3))...
-        ' ± ' num2str(round(lt_errs(i),3))], 'HorizontalAlignment', 'center')
+        '\pm' num2str(round(lt_errs(i),3))], 'HorizontalAlignment', 'center')
 end
 clear i
 
@@ -203,7 +221,8 @@ end
 clear numcol i
 
 detectionRangeFig = figure;
-dr_plot = bar(diag(detectionRange_max),'stacked');   % ensures bars have diff colors
+dr_plot = bar(diag(detectionRange_max),'stacked','FaceColor',[0, 0.4470, 0.7410]);   % ensures bars have appropriate width
+% dr_plot.FaceColor = [0, 0.4470, 0.7410];
 drAx = gca;
 % figure formatting
 xticks(drAx,linspace(1, numseries, numseries))
@@ -217,6 +236,59 @@ for i = 1:numel(xticks)
         'HorizontalAlignment', 'center')
 end
 clear i numseries
+
+%% Analyze Camera Power Consumption test results
+
+% get all camera power consumption accuracy series, excluding NaN
+camPower_idle = camPower_table.power_W_;
+camPower_idle = camPower_idle(~isnan(camPower_idle));
+camPower_active = camPower_table.Power_W_;
+camPower_active = camPower_active(~isnan(camPower_active));
+
+
+% get stats for idle vs. active camera power, mean and CI
+camPowerStats = zeros(7,2);
+
+% default CI = 95% (alpha=0.05)
+[mean,sigma,meanCI,sigmaCI] = normfit(camPower_idle);
+camPowerStats(1:6,1) = [mean sigma meanCI' sigmaCI']';
+[mean,sigma,meanCI,sigmaCI] = normfit(camPower_active);
+camPowerStats(1:6,2) = [mean sigma meanCI' sigmaCI']';
+% include sample size in stats array
+[camPowerStats(7,1),~] = size(camPower_idle);
+[camPowerStats(7,2),~] = size(camPower_active);
+
+clear mean sigma meanCI sigmaCI
+
+%% Analyze SBC Power Consumption test results
+
+% get all camera power consumption accuracy series, excluding NaN
+sbc_idle = sbcPower_table.power_W_;
+sbc_idle = sbc_idle(~isnan(sbc_idle));
+sbc_active = sbcPower_table.Power_W_;
+sbc_active = sbc_active(~isnan(sbc_active));
+
+
+% get stats for idle vs. active camera power, mean and CI
+sbcPowerStats = zeros(7,2);
+
+% default CI = 95% (alpha=0.05)
+[mean,sigma,meanCI,sigmaCI] = normfit(sbc_idle);
+sbcPowerStats(1:6,1) = [mean sigma meanCI' sigmaCI']';
+[mean,sigma,meanCI,sigmaCI] = normfit(sbc_active);
+sbcPowerStats(1:6,2) = [mean sigma meanCI' sigmaCI']';
+% include sample size in stats array
+[sbcPowerStats(7,1),~] = size(sbc_idle);
+[sbcPowerStats(7,2),~] = size(sbc_active);
+
+clear mean sigma meanCI sigmaCI
+
+%% save all figures to subfolder (NOTE: must have a local subfolder, ARAV_figures/ )
+saveas(latencyFig,[pwd '/ARAV_figures/latencyFig.png']);
+saveas(swLandFig_1,[pwd '/ARAV_figures/swLandFig_blind.png']);
+saveas(swLandFig_2,[pwd '/ARAV_figures/swLandFig_detection_compare.png']);
+saveas(landingTimeFig,[pwd '/ARAV_figures/landingTimeFig.png']);
+saveas(detectionRangeFig,[pwd '/ARAV_figures/detectionRangeFig.png']);
 
 %%
 return
