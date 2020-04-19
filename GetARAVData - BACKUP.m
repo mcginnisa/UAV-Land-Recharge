@@ -89,8 +89,8 @@ cl_plot.MarkerSize=7;
 cl_plot.MarkerEdgeColor='red';
 cl_plot.MarkerFaceColor='red';
 % figure formatting
-xlabel(clAx,'distance (m)')
-ylabel(clAx,'latency (ms)')
+xlabel(clAx,'Distance (m)')
+ylabel(clAx,'Latency (ms)')
 title(clAx,{'UAV Command Latency vs Distance','(n \geq 450 for each trial)'})
 ylim(clAx,[9.5,10.5])
 xlim(clAx,[-0.2,3.5])
@@ -132,8 +132,8 @@ h1_plot.Normalization = 'probability';
 h1_plot.BinWidth = 5;
 h1Ax = gca;
 ylim(h1Ax,[0,0.35])
-title(h1Ax,{'Software Landing Accuracy,',['no image recognition (n = ' num2str(numel(swLand_y1)) ')']})
-ylabel(h1Ax,'Probability');
+title(h1Ax,{'Probability Density of Software Landing Accuracy,',['No Image Tracking (n = ' num2str(numel(swLand_y1)) ')']})
+%ylabel(h1Ax,'Probability');
 xlabel(h1Ax,'Landing Accuracy (cm)');
 
 % Plot accuracy w/ image feedback to histograms (subplot for Frame Diff and IR test results)
@@ -142,11 +142,11 @@ hold on
 %   Frame diff
 subplot(2,1,1)
 h2_plot = histogram(swLand_y2);
-h2_plot.FaceColor = [0, 0.4470, 0.7410];
+h2_plot.FaceColor = [0.8500, 0.3250, 0.0980];
 h2_plot.Normalization = 'probability';
 h2Ax = gca;
 [numrows,~] = size(swLand_y2);
-title(h2Ax,['Frame Diff (n = ' num2str(numrows) ')'])
+title(h2Ax,['Frame Difference Tracking (n = ' num2str(numrows) ')'])
 ylim(h2Ax,[0,0.3])
 %   IR beacon
 subplot(2,1,2)
@@ -155,17 +155,17 @@ h3_plot.FaceColor = [0, 0.4470, 0.7410];
 h3_plot.Normalization = 'probability';
 h3Ax = gca;
 [numrows,~] = size(swLand_y3);
-title(h3Ax,['Infrared LED (n = ' num2str(numrows) ')'])
+title(h3Ax,['Infrared LED Tracking (n = ' num2str(numrows) ')'])
 ylim(h3Ax,[0,0.3])
 %   shared figure labels
 hax=axes(swLandFig_2,'visible','off');
 hax.Title.Visible='on';
 hax.XLabel.Visible='on';
 hax.YLabel.Visible='on';
-ylabel(hax,'Probability');
+%ylabel(hax,'Probability');
 xlabel(hax,'Landing Accuracy (cm)');
 % title(hax,'Software Landing Accuracy with Image Recognition');
-sgtitle('Software Landing Accuracy with Image Recognition')
+sgtitle('Probability Density of Software Landing Accuracy')
 
 clear numrows
 
@@ -196,17 +196,60 @@ lt_plot = bar(landingTimeStats(1,:),'FaceColor',[0, 0.4470, 0.7410]);
 ltAx = gca;
 % figure formatting
 xticks(ltAx,[1 2])
-xticklabels(ltAx,{['Frame Difference Detection (n = ' num2str(landingTimeStats(7,1)) ')'],...
-    ['Infrared LED Detection (n = ' num2str(landingTimeStats(7,2)) ')']})
+xticklabels(ltAx,{['Frame Difference Tracking (n = ' num2str(landingTimeStats(7,1)) ')'],...
+    ['Infrared LED Tracking (n = ' num2str(landingTimeStats(7,2)) ')']})
 xlim(ltAx,[0.5 2.5])
 ylabel(ltAx,'duration (s)')
-title(ltAx,'Landing Sequence Duration vs Detection Algorithm')
+title(ltAx,'Landing Sequence Duration vs Image Tracking Method')
 ylim(ltAx,[30,170])
 for i = 1:numel(xticks)
     text(i,landingTimeStats(1,i)+ 5,[num2str(round(landingTimeStats(1,i),3))...
         '\pm' num2str(round(lt_errs(i),3))], 'HorizontalAlignment', 'center')
 end
 clear i
+
+% Box plots for landing times..
+swLandFig_3 = figure;
+hold on
+%   Frame diff
+subplot(2,1,1)
+b2_plot = boxplot(landingTime_y1, 'Orientation','horizontal');
+b2Ax = gca;
+% find corners of box and color fill using 'patch'
+b2 = findobj(b2Ax,'Tag','Box');
+patch(b2Ax, get(b2,'XData'),get(b2,'YData'),[0.8500, 0.3250, 0.0980],'FaceAlpha',.5);
+% force median line to black for contrast
+set(b2Ax.Children(2).Children(2),'Color','k')
+% remove dummy YTick label
+set(b2Ax,'YTickLabel',{' '})
+[numrows,~] = size(landingTime_y1);
+title(b2Ax,{' ',['Frame Difference Tracking (n = ' num2str(numrows) ')']})
+% ylim(b2Ax,[0,0.3])
+
+%   IR beacon
+subplot(2,1,2)
+b3_plot = boxplot(landingTime_y2, 'Orientation','horizontal');
+b3Ax = gca;
+b3 = findobj(b3Ax,'Tag','Box');
+patch(b3Ax, get(b3,'XData'),get(b3,'YData'),[0, 0.4470, 0.7410],'FaceAlpha',.5);
+% force median line to black for contrast
+set(b2Ax.Children(2).Children(2),'Color','k')
+% remove dummy YTick label
+set(b3Ax,'YTickLabel',{' '})
+[numrows,~] = size(landingTime_y2);
+title(b3Ax,['Infrared LED Tracking (n = ' num2str(numrows) ')'])
+% ylim(b3Ax,[0,0.3])
+%   shared figure labels
+bax=axes(swLandFig_3,'visible','off');
+bax.Title.Visible='on';
+bax.XLabel.Visible='on';
+bax.YLabel.Visible='off';
+%ylabel(hax,'Probability');
+xlabel(bax,'Duration (s)');
+% title(bax,'Software Landing Accuracy with Image Recognition');
+sgtitle('Landing Sequence Duration of Two Image Tracking Methods')
+
+clear numrows
 
 %% Analyze Detection Algorithm Range test results
 %ignore first row of initial timestamp
@@ -220,22 +263,35 @@ for i=1:numseries
 end
 clear numcol i
 
+% COMMENT OUT START
+% hardcode update for increased IR range, per J. Haun.
+detectionRange_max(4)=3.08;
+% COMMENT OUT STOP
+
 detectionRangeFig = figure;
 dr_plot = bar(diag(detectionRange_max),'stacked','FaceColor',[0, 0.4470, 0.7410]);   % ensures bars have appropriate width
 % dr_plot.FaceColor = [0, 0.4470, 0.7410];
 drAx = gca;
 % figure formatting
 xticks(drAx,linspace(1, numseries, numseries))
-xticklabels(drAx,{'RGB','April Tag','Frame Diff','Infrared LED'})
+xticklabels(drAx,{'RGB','April Tag','Frame Difference','Infrared LED'})
 xlim(drAx,[0.5 numseries+0.5])
 ylabel(drAx,'distance (m)')
-title(drAx,'UAV Detection Range vs Detection Algorithm')
+title(drAx,'UAV Tracking Range vs Image Tracking Method')
 % ylim(ltAx,[30,170])
+drText = zeros(1,numel(xticks));
 for i = 1:numel(xticks)
-    text(i,detectionRange_max(i)+ 0.1,num2str(round(detectionRange_max(i),2)),...
-        'HorizontalAlignment', 'center')
+    drText(i) = text(i,detectionRange_max(i)+ 0.1,num2str(round(detectionRange_max(i),2)),...
+        'HorizontalAlignment', 'center');
 end
 clear i numseries
+
+% % COMMENT OUT START
+% % hardcode update for increased IR range, per J. Haun.
+% delete(drText(4))
+% text(4,detectionRange_max(4)+ 0.1,num2str(3.08),...
+%         'HorizontalAlignment', 'center')
+% % COMMENT OUT STOP
 
 %% Analyze Camera Power Consumption test results
 
@@ -282,11 +338,44 @@ sbcPowerStats(1:6,2) = [mean sigma meanCI' sigmaCI']';
 [sbcPowerStats(7,2),~] = size(sbc_active);
 
 clear mean sigma meanCI sigmaCI
+%% Quick stats on hover tests
+hoverStats = zeros(7,2);
+
+hover_250 = [244 190 199];
+hover_380 = [215];
+
+[mean,sigma,meanCI,sigmaCI] = normfit(hover_250);
+hoverStats(1:6,1) = [mean sigma meanCI' sigmaCI']';
+[mean,sigma,meanCI,sigmaCI] = normfit(hover_380);
+hoverStats(1:6,2) = [mean sigma meanCI' sigmaCI']';
+hoverStats(7,1) = numel(hover_250);
+hoverStats(7,2) = numel(hover_380);
+disp('hoverStats')
+disp(hoverStats)
+
+clear mean sigma meanCI sigmaCI
+
+%% Quick stats on mobile tests
+mobileStats = zeros(7,1);
+
+mobile_250 = [165 163 116 116];
+% mobile_380 = [3.583333333];
+
+[mean,sigma,meanCI,sigmaCI] = normfit(mobile_250);
+mobileStats(1:6,1) = [mean sigma meanCI' sigmaCI']';
+% [mean,sigma,meanCI,sigmaCI] = normfit(hover_380);
+% mobileStats(1:6,2) = [mean sigma meanCI' sigmaCI']';
+mobileStats(7,1) = numel(mobile_250);
+% mobileStats(7,2) = numel(hover_380);
+disp('mobileStats')
+disp(mobileStats)
+clear mean sigma meanCI sigmaCI
 
 %% save all figures to subfolder (NOTE: must have a local subfolder, ARAV_figures/ )
 saveas(latencyFig,[pwd '/ARAV_figures/latencyFig.png']);
 saveas(swLandFig_1,[pwd '/ARAV_figures/swLandFig_blind.png']);
-saveas(swLandFig_2,[pwd '/ARAV_figures/swLandFig_detection_compare.png']);
+saveas(swLandFig_2,[pwd '/ARAV_figures/swLandFig_detection_compare_bar.png']);
+saveas(swLandFig_3,[pwd '/ARAV_figures/swLandFig_detection_compare_box.png']);
 saveas(landingTimeFig,[pwd '/ARAV_figures/landingTimeFig.png']);
 saveas(detectionRangeFig,[pwd '/ARAV_figures/detectionRangeFig.png']);
 
