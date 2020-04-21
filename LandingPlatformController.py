@@ -3,63 +3,280 @@ import sys
 import glob
 import math
 import time
+import RPi.GPIO as GPIO
 
 class LandingPlatformController():
     
-    def __init__(self, UAV=None, cameraInitValue='{900$900}\r\n', hoverHeight=0.5, velocity=0.2, serialLimiters=['{','$','}']):
+    def __init__(self, settings=dict(), debug=False):
         """
         Function: __init__
         Purpose: Setup the LandingPlatformController class
-        Inputs: UAV - a UAV controller object that is able to direct a relevant UAV
-                cameraInitValue - a string denoting the default value that should be present on the serial connection representing the camera
-                hoverHeight - a floating point value denoting a minimum height in meters to hover
-                velocity - a floating point value indicating the velocity in meters per second the UAV will travel at
-                serialLimiters - an array of strings that denote the limiting characters/strings for the serial data
+        Inputs: debug - a boolean value that indicates whether debug messages and actions are taken. If false, systems will fail silently or crash.  
+                settings - a relational array that contains various parameters that can be changed by the user
+
+        <<<DETAIL SETTINGS HERE>>>
+
         Outputs: None
-        Description:
+        Description: 
         """
+        #Create a file descriptor object that can then be written for debug messages
+        try:
+            self._debugFile = open(settings['debugFile'], 'w')
+        except (TypeError, KeyError):
+            if(debug == True):
+                self._debugFile = sys.stdout
+            else:
+                self._debugFile = open('/dev/null', 'w')
+
+        #Define value that corresponds to camera power control pin
+        try:
+            self._cameraPowerPin = settings["cameraPowerPin"]
+        except (TypeError, KeyError):
+            self._cameraPowerPin = 7
+
+        #Define value that corresponds to Qi pad power control pin
+        try:
+            self._padPowerPin = settings["padPowerPin"]
+        except (TypeError, KeyError):
+            self._padPowerPin = 8
+
+        GPIO.setmode(GPIO.BOARD)
+        GPIO.setup(self._cameraPowerPin, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(self._padPowerPin, GPIO.OUT, initial=GPIO.LOW)
         
-        #Define/Manage UAV connection
-        if(UAV == None):
-            print("ERROR: Landing Platform Controller requires a UAV control object")
-            
-        #Define class constants necessary for UAV 
-        self._uav = UAV
-        self._uavVelocity = velocity
-        self._hoverHeight = hoverHeight
-        self._minHoverHeight = hoverHeight - hoverHeight/10
+        #Define boolean values used for flagging errors
+        self._updatedPosition = False
+
+        #Define default UAV position values
         self._uavPos = [-1, -1, -1]
-        self._landingPos = [0.07, 0, 0] #A set of world coordinates that needs to be defined somehow
+
+        #Define default UAV offset angle value
         self._uavOffsetAngle = 0 #in radians
 
-        #Define class tolerance/accuracy values
-        self._cameraAccuracy = 15 #Number of points the camera will sample each pass
-        self._cameraInFrameAccuracy = 5 #Number of points camera will use to determine if UAV is in frame
-        self._cameraInFrameThreshold = 0.5 #Percentage of points at which the UAV is considered 'in frame'
-        self._uavLandingTolerance = 0.1 #The magnitude a offset vector needs to overcome to be considered valid
-        self._coordTolerance = 0.05 #Value used to determine if a new coordinate transform is necessary
-        self._onTargetFactor = 12 #An integer value that determines the factor of the logarithmic function that determines if the UAV is on target
-        self._onTargetOffset = 1.8 #A floating point value that determines the height offset
+        #Define class constants necessary for UAV 
+        try:
+            self._uav = settings['uav']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, print warning message.
+            print("LPC: __init__ - Landing Platform Controller requires a UAV control object.", file=self._debugFile)
+            sys.exit(0)
+           
+        #Define UAV velocity in meters per second
+        try:
+            self._uavVelocity = settings['velocity']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._uavVelocity = 0.2 
+
+        #Define starting hover height for UAV
+        try:
+            self._hoverHeight = settings['hoverHeight']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._hoverHeight = 0.5
+            
+        #Define the minimum hover height for UAV
+        try:
+            self._minHoverHeight = settings['minHoverHeight']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._minHoverHeight = self._hoverHeight - self._hoverHeight*0.5
+
+        #Define the maximum hover height for the UAV
+        try:
+            self._maxHoverHeight = settings['maxHoverHeight']
+        except (TypeError, KeyError):
+            self._maxHoverHeight = 3
+            
+        #Define the landing position world coordinates in meters
+        try:
+            self._landingPos = settings['landingPos']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._landingPos = [0, 0, 0]
+
+        #Begin definition of class tolerance/accuracy values
+
+        #Define a number of points the camera will sample to determine UAV position
+        try:
+            self._cameraAccuracy = settings['cameraAccuracy']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._cameraAccuracy = 15 
+
+        #Define a number of points camera will use to determine if UAV is in frame
+        try:
+            self._cameraInFrameAccuracy = settings['cameraInFrameAccuracy']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._cameraInFrameAccuracy = 5 
+
+        #Define a percentage of points at which the UAV is considered 'in frame'
+        try:
+            self._cameraInFrameThreshold = settings['cameraInFrameThreshold']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._cameraInFrameThreshold = 0.5
+
+        #Define a value used to determine if a new coordinate transform is necessary
+        try:
+            self._coordTolerance = settings['coordTolerance']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._coordTolerance = 0.01 
+
+        #Define an integer value that determines the factor of the logarithmic function that determines if the UAV is on target
+        try:
+            self._onTargetFactor = settings['onTargetFactor']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._onTargetFactor = 10 
+
+        #Define a floating point value that determines the height offset
+        try:
+            self._onTargetOffset = settings['onTargetOffset']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._onTargetOffset = 2.0
+
+        #Define a floating point value that determines the UAV boundary offset
+        try:
+            self._boundaryOffset = settings['boundaryOffset']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._boundaryOffset = 0.1
+            
+        #End definition of class tolerance/accuracy values
+
+        #Begin definitions of values to allow for pixel to world coordinate conversion
+        #Define the view angle of the camera in radians
+        try:
+            self._viewAngle = settings['viewAngle']
+        except (TypeError, KeyError):
+            self._viewAngle = 2.96706
+            
+        #Define the focal length of lens in meters, per datasheet
+        try:
+            self._focalLength = settings['focalLength']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._focalLength = 0.00265 
+
+        #Define the sensor x-size in meters, per datasheet
+        try:
+            self._xImage = settings['xImage']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._xImage = 0.003984 
+
+        #Define the sensor y-size in meters, per datasheet
+        try:
+            self._yImage = settings['yImage']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._yImage = 0.002952 
+
+        #Define the sensor x-size in pixels, per datasheet
+        try:
+            self._xSensor = settings['xSensor']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._xSensor = 656
+
+        #Define the sensor y-size in pixels, per datasheet
+        try:
+            self._ySensor = settings['xSensor']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._ySensor = 488 
+
+        #Define the dimension of active sensors in the x direction in pixels, per datasheet
+        try:
+            self._xActive = settings['xActive']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._xActive = 640 
+
+        #Define the dimension of active sensors in the y direction in pixels, per datasheet
+        try:
+            self._yActive = settings['yActive']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._yActive = 480 
+            
+        #Define the frame size in the x dimension in pixels, per selected camera mode
+        try:
+            self._xRange = settings['xRange']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._xRange = 240 
+
+        #Define the frame size in the y dimension in pixels, per selected camera mode
+        try:
+            self._yRange = settings['yRange']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._yRange = 240 
+
+        #Define the offset value in the x dimension
+        try:
+            self._xOff = settings['xOff']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._xOff = self._xRange/2 
+
+        #Define the offset value in the y dimension
+        try:
+            self._yOff = settings['yOff']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._yOff = self._yRange/2 
+
+        #End definitions of values to allow for pixel to world coordinate conversion
+
+        #Begin definitions of values to manage/enable serial connection to the camera
+        #Define the initial string values expected from the camera
+        try:
+            self._cameraInitValue = settings['cameraInitValue']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._cameraInitValue = '{904$904}\r\n'
+
+        #Define the string values expected from the camera when the UAV is not in frame
+        try:
+            self._cameraOutOfFrameValue = settings['cameraOutOfFrameValue']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._cameraOutOfFrameValue = '{900$900}\r\n'
         
-        #Define constants to allow for pixel to world coordinate conversion
-        self._focalLength = 0.00265 #focal length of lens in meters, per datasheet
-        self._xImage = 0.003984 #sensor x-size in meters, per datasheet
-        self._yImage = 0.002952 #sensor y-size in meters, per datasheet
-        self._xSensor = 656 #sensor x-size in pixels, per datasheet
-        self._ySensor = 488 #sensor y-size in pixels, per datasheet
-        self._xActive = 640 #Dimension of active sensors in the x direction in pixels, per datasheet
-        self._yActive = 480 #Dimension of active sensors in the y direction in pixels, per datasheet
-        self._xRange = 240 #Frame size in the x dimension in pixels, per selected camera mode
-        self._yRange = 240 #Frame size in the y dimension in pixels, per selected camera mode
-        self._xOff = self._xRange/2 #Offset value in the x dimension
-        self._yOff = self._yRange/2 #Offset value in the y dimension
-        
-        #Define/Manage Serial connection
+        #Define the string that will be sent to the camera to start operations
+        try:
+            self._cameraStartString = settings['cameraStartString']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._cameraStartString = 'start'
+
+        #Define limiters used to parse the serial data for coordinate values
+        try:
+            self._serialLimiters = settings['serialLimiters']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use defaults
+            self._serialLimiters = ['{','$','}']
+
+        #End definitions of values to manage/enable serial connection to the camera
+
+        #Turn the camera off, then on again to enter initial setup state
+        self._setCameraPin(1)
+        for i in range(5,0,-1):
+            time.sleep(1) #Sleep to allow the OS to setup USB
+                
+        #Create camera serial connection
         self._camera = None
-        self._cameraInitValue = cameraInitValue
-        self._serialLimiters = serialLimiters
-        while(self._getCameraSerialConnection(cameraInitValue) == None):{"""Do Nothing"""}
-        self._camera = serial.Serial(port=self._getCameraSerialConnection(cameraInitValue))
+        while(self._getCameraSerialConnection(self._cameraInitValue) == None):{"""Do Nothing"""}
+        self._camera = serial.Serial(port=self._getCameraSerialConnection(self._cameraInitValue))
+
+        #Send start string to camera value to begin operations
+        self._camera.write(self._cameraStartString.encode())
 
     def _getUAVPosition(self):
         """
@@ -71,10 +288,10 @@ class LandingPlatformController():
         """
         if(self._camera == None):
             return 
-
+        
         #Find the default value for the camera, this indicates non-detection
-        xValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[0])+1:self._cameraInitValue.rfind(self._serialLimiters[1])])
-        yValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[1])+1:self._cameraInitValue.rfind(self._serialLimiters[2])])
+        xValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[0])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])])
+        yValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[2])])
         
         #Get update height
         self._uavPos[2] = self._uavGetHeight()
@@ -95,7 +312,7 @@ class LandingPlatformController():
             posString = posString[posString.find(self._serialLimiters[0]):posString.find(self._serialLimiters[2])+1]
         
             if(len(posString) > 0):
-                if(posString[0] == '{'):                    
+                if(posString[0] == self._serialLimiters[0]):                    
                     #Find the limiter positions to properly split string into x & y components
                     initIndex=posString.rfind(self._serialLimiters[0])
                     splitIndex=posString.rfind(self._serialLimiters[1])
@@ -104,11 +321,6 @@ class LandingPlatformController():
                     #Convert both positions to integer values
                     xPos = int(posString[(initIndex+1):splitIndex])
                     yPos = int(posString[(splitIndex+1):lastIndex])
-
-                    if(xPos > xValDummy or yPos > yValDummy):
-                        #A value greater than the init string indicates an error occurred
-                        self._uavPos = [None, None, None]
-                        return self._uavPos
 
                     #If values are less than dummy values, append to array
                     if((xPos <= xValDummy) and (yPos <= yValDummy)):
@@ -125,9 +337,10 @@ class LandingPlatformController():
         if((len(xPoints) > 0) and (len(yPoints) > 0)):
             self._uavPos[0] = math.fsum(xPoints)/len(xPoints)
             self._uavPos[1] = math.fsum(yPoints)/len(yPoints)
+            self._updatedPosition = True
         else:
-            self._uavPos = [None, None, None]
-            
+            self._updatedPosition = False
+
         return self._uavPos
 
     def _uavInFrame(self):
@@ -139,19 +352,17 @@ class LandingPlatformController():
         Description:
         """
         #Find the default value for the camera, this indicates non-detectionx
-        xValDummy = int(self._cameraInitValue[self._cameraInitValue.rfind(self._serialLimiters[0])+1:self._cameraInitValue.rfind(self._serialLimiters[1])])
+        xValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[0])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])])
+        yValDummy = int(self._cameraOutOfFrameValue[self._cameraOutOfFrameValue.rfind(self._serialLimiters[1])+1:self._cameraOutOfFrameValue.rfind(self._serialLimiters[2])])
         
         #Create blank arrays
         xPoints = [xValDummy]
+        yPoints = [yValDummy]
         inFrame = False
 
         #Flush serial buffer to insure that most recent data points are grabbed
         self._camera.reset_input_buffer()
         
-        #Workaround currently
-        #Until the last value in the initial value is found, read characters
-        #while(self._camera.read(1).decode('ascii') != self._cameraInitValue[-1]):{} #Need to fix this to a limiter
-
         for i in range(0, int(self._cameraInFrameAccuracy)):
             #Workaround currently
             #Until the last value in the initial value is found, read characters
@@ -163,23 +374,26 @@ class LandingPlatformController():
             
             #If a proper position string was grabbed, process it
             if(len(posString) > 0):
-                if(posString[0] == '{'):                    
-                    #Find the limiter positions to properly split string into x & y components
+                if(posString[0] == self._serialLimiters[0]):                    
                     initIndex=posString.rfind(self._serialLimiters[0])
                     splitIndex=posString.rfind(self._serialLimiters[1])
                     lastIndex=posString.rfind(self._serialLimiters[2])
             
                     #Convert both positions to integer values
                     xPos = int(posString[(initIndex+1):splitIndex])
+                    yPos = int(posString[(splitIndex+1):lastIndex])
                     
                     #Append to list for potential averaging
                     xPoints.append(xPos)
+                    yPoints.append(yPos)
             else:
                 #If a proper value was not found, flush the input buffer again
                 self._camera.reset_input_buffer()
 
-        print("LPC: _uavInFrame - xPoints =", xPoints)
-        if(xPoints.count(xValDummy) <= len(xPoints)*self._cameraInFrameThreshold):
+        print("LPC: _uavInFrame - xPoints =" + str(xPoints), file=self._debugFile)
+        print("LPC: _uavInFrame - yPoints =" + str(yPoints), file=self._debugFile)
+        
+        if(xPoints.count(xValDummy) <= len(xPoints)*self._cameraInFrameThreshold and yPoints.count(yValDummy) <= len(yPoints)*self._cameraInFrameThreshold):
             inFrame = True
             
         return inFrame
@@ -202,7 +416,7 @@ class LandingPlatformController():
         x = k*xPixSize*(x_pixel - self._xOff)
         y = k*yPixSize*(y_pixel - self._yOff)
         return x,y
-    
+
     def _calculateOffset(self):
         """
         Function: _calculateOffset
@@ -227,7 +441,7 @@ class LandingPlatformController():
         Outputs: a floating point value representing the z-coordinate 
         Description:
         """
-        #Will want to figure out how to read UAV height from logs as this is a terrible way to go about it. 
+        self._hoverHeight = self._uav.getHeight()
         return self._hoverHeight
 
     def _sendMovement(self, xDis, yDis, zDis):
@@ -241,7 +455,7 @@ class LandingPlatformController():
         Description:
         """
         #If there is a movement to make
-        if( (xDis+yDis+zDis) != 0):
+        if( (xDis+yDis+zDis) != 0 and (zDis + self._hoverHeight) <= self._maxHoverHeight):
             #Send movement to UAV, UAV controller class will delay an appropriate time while the UAV moves
             self._uav.move(xDis, yDis, zDis, self._uavVelocity)
             #Update hover height
@@ -259,27 +473,26 @@ class LandingPlatformController():
         Description:
         """
         #Make copy of world coordinates
-        print("LPC: _sendToHome - self._landingPos =", self._landingPos)
+        print("LPC: _sendToHome - self._landingPos =" + str(self._landingPos), file=self._debugFile)
         temp = [xPos, yPos]
         worldCoords = temp.copy()
-        print("LPC: _sendToHome - worldCoords =", worldCoords)
+        print("LPC: _sendToHome - worldCoords =" + str(worldCoords), file=self._debugFile)
         #Transform the world coordinates to the UAV frame coordinates
         transformX = worldCoords[0]*math.cos(self._uavOffsetAngle) + worldCoords[1]*math.sin(self._uavOffsetAngle)
         transformY = -worldCoords[0]*math.sin(self._uavOffsetAngle) + worldCoords[1]*math.cos(self._uavOffsetAngle)
-        print("LPC: _sendToHome - transform =", (transformX, transformY))
-        print("LPC: _sendToHome - self._landingPos =", self._landingPos)
+        print("LPC: _sendToHome - transform =" + str(transformX) + "," + str(transformY), file=self._debugFile)
+        print("LPC: _sendToHome - self._landingPos =" + str(self._landingPos), file=self._debugFile)
 
         temp = [self._landingPos[0] - transformX, self._landingPos[1] - transformY, 0]
         distances = temp.copy()
-        print("LPC: _sendToHome - distances =", distances)
+        print("LPC: _sendToHome - distances =" + str(distances), file=self._debugFile)
 
         #Instruct UAV to move distances determined
         self._sendMovement(distances[0], distances[1], distances[2])
-        #Update hover height
-        self._hoverHeight += distances[2]
+        
         #To prevent leaving of the camera frame, reduce previous movement by 10% if UAV is not in frame
         while(self._uavInFrame() == False and (distances[0]+distances[1]+distances[2]) != 0):
-            print("LPC: _sendToHome - UAV Not in Frame")
+            print("LPC: _sendToHome - UAV Not in Frame", file=self._debugFile)
             self._sendMovement(-0.1*distances[0], -0.1*distances[1], 0*distances[2])
             
         return
@@ -292,13 +505,15 @@ class LandingPlatformController():
         Outputs: None
         Description:
         """
+        print("LPC: engageFlightRoutine - Beginning", file=self._debugFile)
         self._uav.launch()
-        #while(self._uavInFrame() == False):
-        #    self._sendMovement(0, 0, 0.5)
-        self._sendMovement(0,0,1.2)
-        curPos = self._getUAVPosition()
-        #self._sendToHome(curPos[0], curPos[1])
-        #time.sleep(5)
+        while(self._uavInFrame() == False):
+            print("LPC: engageFlightRoutine - UAV going up", file=self._debugFile)
+            self._sendMovement(0, 0, 0.5)
+        if(self._uavInFrame() == False):
+            print("LPC: engageFlightRoutine - UAV Not in frame. Landing at current position.", file=self._debugFile)
+            return
+        print("LPC: engageFlightRoutine - Ending and beginning landing sequence.", file=self._debugFile)
         self._performLandingSequence()
         return
 
@@ -313,6 +528,7 @@ class LandingPlatformController():
         self._uav.land()
         self._uav.done()
         self._camera.close()
+        GPIO.cleanup()
         return
     
     def _performLandingSequence(self):
@@ -328,46 +544,51 @@ class LandingPlatformController():
         while((self._hoverHeight >= self._minHoverHeight)):
             #Get current position and save to temp variable, then copy to actual variable to prevent erroneous overwriting
             temp = self._getUAVPosition()
+            print("LPC: _performLandingSequence - updatedPosition =" + str(self._updatedPosition), file=self._debugFile)
+            #START STATEMENT
             if(temp != None):
                 startPos = temp.copy()
-            else:
-                startPos = [0, 0]
-            print("LPC: _performLandingSequence - startPos1 =", startPos)
+            print("LPC: _performLandingSequence - startPos1 =" + str(startPos), file=self._debugFile)
+
+            if(self._uavInBoundary(startPos) == False):
+                #self._moveUAVInsideBoundary(startPos)
+                print("LPC: _performLandingSequence - UAV not in boundary")
+            
             offset = self._calculateOffset()
-            print("LPC: _performLandingSequence - Offset =", offset)
+            print("LPC: _performLandingSequence - Offset =" + str(offset), file=self._debugFile)
             
             #If the magnitude is greater than the desired accuracy value, move the UAV in the X-Y plane
             if(self._uavOnTarget(offset) == False):
                 temp = [startPos[0]+offset[0], startPos[1]+offset[1], offset[2]]
                 expectedPos = temp.copy()
-                print("LPC: _performLandingSequence - expecetdPos =", expectedPos)
+                print("LPC: _performLandingSequence - expecetdPos =" + str(expectedPos), file=self._debugFile)
                 self._sendToHome(startPos[0], startPos[1])
+
                 #After movement, get the new UAV position so that the offset can be determined
                 temp = self._getUAVPosition()
                 if(temp != None):
                     endPos = temp.copy()
-                else:
-                    endPos = [0, 0]
-
-                print("LPC: _performLandingSequence - endPos =", endPos)
-        
+                print("LPC: _performLandingSequence - endPos =" + str(endPos), file=self._debugFile)
+                        
                 #After movement, make sure the UAV is aligned properly
                 percentDiffX = expectedPos[0]/math.fabs(expectedPos[0] - endPos[0])
                 percentDiffY = expectedPos[1]/math.fabs(expectedPos[1] - endPos[1])
                 #If percent difference is greater than threshold and the angle is zero, create new transform
                 if((percentDiffX > self._coordTolerance or percentDiffY > self._coordTolerance) and self._uavOffsetAngle == 0):
-                    print("LPC: _performLandingSequence - Creating new transform")
+                    print("LPC: _performLandingSequence - Creating new transform", file=self._debugFile)
                     self._createCoordinateTransform(startPos, expectedPos, endPos)
                 elif((percentDiffX > self._coordTolerance or percentDiffY > self._coordTolerance) and self._uavOffsetAngle != 0):
-                    print("LPC: _performLandingSequence - Resetting Angle")
-                    print("LPC: _performLandingSequence - offsetAngle =", self._uavOffsetAngle)
+                    print("LPC: _performLandingSequence - Resetting Angle", file=self._debugFile)
+                    print("LPC: _performLandingSequence - offsetAngle =" + str(self._uavOffsetAngle), file=self._debugFile)
                     self._uavOffsetAngle = 0
                 #self._alignUAV(startPos, expectedPos, endPos)
-                    
+                
             #Otherwise, move the UAV in the -Z direction
             else:
                 self._sendMovement(0, 0, 0.1*offset[2]) 
 
+        self._sendMovement(0.2,0,0)
+        #Perform Landing Operations Here
         self._uav.land()
         return
 
@@ -388,12 +609,34 @@ class LandingPlatformController():
         #Assumes the _uavHoverHeight variable has been recently updated
         maxOffset = math.pow(self._onTargetFactor, self._hoverHeight - self._onTargetOffset)
 
-        print("LPC: _uavOnTarget - maxOffset =", maxOffset)
+        print("LPC: _uavOnTarget - maxOffset =" + str(maxOffset), file=self._debugFile)
         
         #If the maximum offset allowed at the UAV height is greater than current offset, return true
         if(maxOffset > offsetMag):
             return True
         return False
+
+    def _uavInBoundary(self, position):
+        """
+        Function: _uavOnTarget
+        Purpose: Determine if the UAV is within the target area for its specific height
+        Inputs: positionVector - a list of floating point values representing the <x, y> position of the UAV
+        Outputs: a boolean value indicating whether the UAV is within the boundary area for its specific height
+        Description:
+        """
+        #Calculate the boundary radius by using the viewing angle and the maxHoverHeight to create a triangle
+        boundaryRadius = min(self._pixelConversion(255,255,self._hoverHeight))
+        
+        #Calculate the positional radius from the center by calculating the magnitude of the x,y vector
+        positionRadius = math.sqrt(math.pow(position[0],2) + math.pow(position[1],2))
+
+        print("LPC: _uavInBoundary - boundaryRadius = " + str(boundaryRadius), file=self._debugFile)
+        print("LPC: _uavInBoundary - positionRadius = " + str(positionRadius), file=self._debugFile)
+        
+        #If the position is outside boundary, return false. Otherwise, true.
+        if(positionRadius > boundaryRadius):
+            return False
+        return True
 
     def _createCoordinateTransform(self, startPosition, expectedPosition, endPosition):
         """
@@ -405,38 +648,8 @@ class LandingPlatformController():
         Outputs: None
         Description: 
         """
-        """
-        #Find the magnitude of the expected change
-        magnitudeExpected = math.sqrt(math.pow(expectedPosition[0]-startPosition[0],2) + math.pow(expectedPosition[1]-startPosition[1],2))
-
-        #Find the magnitude of the actual change by subtracting start position from actual position
-        magnitudeActual = math.sqrt(math.pow(endPosition[0]-startPosition[0],2) + math.pow(endPosition[1]-startPosition[1],2))
-
-        #Find the magnitude of the difference between actual and expected
-        magnitudeDiff = math.sqrt(math.pow(endPosition[0]-expectedPosition[0],2) + math.pow(endPosition[1]-expectedPosition[1],2))
-
-        if(magnitudeDiff == 0 or magnitudeActual == 0):
-            self._uavOffsetAngle = 0
-        else:
-            internalValue = -(math.pow(magnitudeDiff,2)-math.pow(magnitudeExpected,2)-math.pow(magnitudeActual,2))/(2*magnitudeDiff*magnitudeActual)
-            reducedInternalVal = int(internalVal)
-            if(reducedInternalVal > 1):
-                #If greater/less than 1/-1 reduce the internalValue to only the 
-                internalValue = internalValue%1
-            elif(or reducedInternalVal < -1):
-                internalValue = internalValue%1 
-            print("LPC: _createCoordinateTransform - internalValue =", internalValue)
-            self._uavOffsetAngle = math.acos(internalValue)
-        """
         self._uavOffsetAngle = math.atan2(expectedPosition[0]*endPosition[1] - expectedPosition[1]*endPosition[0], expectedPosition[0]*endPosition[0] - expectedPosition[1]*endPosition[1])
         return math.degrees(self._uavOffsetAngle)
-
-    def _determineAccuracy(self, startPosition, expectedPosition, endPosition):
-        """
-
-        """
-        
-        return
                         
     def _alignUAV(self, startPosition, expectedPosition, endPosition):
         """
@@ -475,16 +688,17 @@ class LandingPlatformController():
         internalVal = (math.pow(magnitudeExpected,2) + math.pow(magnitudeActual,2) - math.pow(magnitudeDiff,2))/(2*magnitudeExpected*magnitudeActual)
         angle = math.degrees(math.acos(internalVal))
         
-        print("LPC: _alignUAV - startCoord =", startPosition)
-        print("LPC: _alignUAV - expectedChange =", expectedPosition)
-        print("LPC: _alignUAV - actual =", endPosition)
-        print("LPC: _alignUAV - (magE, magA, magD) =", (magnitudeExpected, magnitudeActual, magnitudeDiff))
-        print("LPC: _alignUAV - internalVal =", internalVal)
-        print("LPC: _alignUAV - angle =", angle)
+        print("LPC: _alignUAV - startCoord =" + str(startPosition), file=self._debugFile)
+        print("LPC: _alignUAV - expectedChange =" + str(expectedPosition), file=self._debugFile)
+        print("LPC: _alignUAV - actual =" + str(endPosition), file=self._debugFile)
+        print("LPC: _alignUAV - (magE, magA, magD) =" + str(magnitudeExpected) + "," + str(magnitudeActual) + "," + str(magnitudeDiff), file=self._debugFile)
+        print("LPC: _alignUAV - internalVal =" + str(internalVal), file=self._debugFile)
+        print("LPC: _alignUAV - angle =" + str(angle), file=self._debugFile)
+        print("LPC: _alignUAV - _uavOffsetAngle =" + str(self._uavOffsetAngle), file=self._debugFile)
 
         #Reduce angle to below 360 while preserving original sign value
         #This step is likely unnecessary as math.cos should return a value from zero to two pi
-        angle = (angle/math.fabs(angle))*(math.fabs(angle)%360)
+        #angle = (angle/math.fabs(angle))*(math.fabs(angle)%360)
 
         #Reduce the angle to below 180 while preserving original sign value
         if(angle > 180):
@@ -492,7 +706,8 @@ class LandingPlatformController():
         elif(angle < -180):
             angle = angle + 360
 
-        self._uav.rotate(angle)
+        self._uav.rotate(self._uavOffsetAngle)
+        self._uavOffsetAngle = 0
 
         #After alignment, if the UAV is not inside the vision cone, increase the height to preserve <x, y> position
         #Will need to make this error correction more robust to account for maximum height limitations
@@ -520,6 +735,7 @@ class LandingPlatformController():
         Outputs: A string that represents the port that has the camera connection
         Note: Performs a priming read which will discard the first value sent.
         """
+               
         #Create a blank camera port
         cameraPort = None
         
@@ -528,14 +744,18 @@ class LandingPlatformController():
         
         #For all ports returned, create a test connection and look for expected values
         for port in availablePorts:
-            test = serial.Serial(port)
-            while(test.read(1).decode('ascii') != expectedVals[-1]):{}
+            
+            test = serial.Serial(port, timeout=0.01)
+            timeoutCount = 0
+            while(test.read(1).decode('ascii') != expectedVals[-1] and timeoutCount <= len(expectedVals)*4):
+                timeoutCount += 1
+                
             if(test.read(len(expectedVals)).decode('ascii') == expectedVals):
                 #If expected values are found, assign the string value of the port
                 cameraPort = port
-            
-            test.close()
         
+            test.close()
+                
         #Return the last found serial connection as a string value
         return cameraPort
         
@@ -575,3 +795,23 @@ class LandingPlatformController():
                 pass
             
         return availablePorts
+
+    def _setCameraPin(self, state):
+        """
+        Function: _toggleCameraPower
+        Purpose: Toggles the RaspberryPi pin that corresponds to the power control for camera
+        Inputs: state - an integer value representing on (1) or off (0)
+        Outputs: none
+        """
+        GPIO.output(self._cameraPowerPin, state)
+        return
+
+    def _setPadPin(self, state):
+        """
+        Function: _togglePadPower
+        Purpose: Toggles the RaspberryPi pin that corresponds to the power control for Qi pad
+        Inputs: state - an integer value representing on (1) or off (0)
+        Outputs: none
+        """
+        GPIO.output(self._padPowerPin, state)
+        return

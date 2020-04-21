@@ -5,25 +5,28 @@ import signal
 import sys
 import time
 
-UAV = None
+LPC = None
 
 def signalHandler(sig, frame):
-    global UAV
-    if(UAV != None):
-        UAV.land()
-        UAV.done()
+    global LPC
+    if(LPC != None):
+        LPC.done()
+    
     sys.exit(0)
 
 def main():
-    global UAV
+    global LPC
+    UAV = None
     signal.signal(signal.SIGINT, signalHandler)
     print("MAIN: Attempting to connect to UAV")
     while(UAV == None):
         UAV = UAVController()
-    print("MAIN: UAV Connected, Initializing Landing Platform Controller")
+    print("MAIN: UAV Connected, Initializing Landing Platform Controller")        
     LPC = None
+    settingsArray = dict()
+    settingsArray['uav'] = UAV
     while(LPC == None):
-        LPC = LandingPlatformController(UAV)
+        LPC = LandingPlatformController(settings=settingsArray, debug=False)
     print("MAIN: Landing Platform Controller Initialized")
     LPC.engageFlightRoutine()
     LPC.done()

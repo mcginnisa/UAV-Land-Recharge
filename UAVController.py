@@ -11,7 +11,7 @@ from cflib.crazyflie.log import LogConfig, Log, LogVariable
         
 class UAVController():
 
-    def __init__(self):
+    def __init__(self, targetURI=None):
         """
         Function: __init__
         Purpose: Initialize all necessary UAV functionality
@@ -20,22 +20,16 @@ class UAVController():
         """
 
         cflib.crtp.init_drivers()
+
+        self.FD = open("logFile.txt", "w")
      
         self.timeout = True
         self.available = []
         self.UAV = Crazyflie()
         self.param = None
         self.airborne = False
-
-        #Setup logging objects/constants
-        rootLog = logging.getLogger()
-        rootLog.setLevel(logging.INFO)
-        self._batteryCaptureString = io.StringIO()
-        self._batteryStreamHandler = logging.StreamHandler(self._batteryCaptureString)
-        self._batteryStreamHandler.setLevel(logging.INFO)
-        rootLog.addHandler(self._batteryStreamHandler)
-
-        foundUAV = False
+        self._recentDataPacket = None
+        self._receivingDataPacket = False
 
         #Attempt to locate UAV by scanning available interface
         for _ in range(0,500):
@@ -46,25 +40,37 @@ class UAVController():
                 self.available = cflib.crtp.scan_interfaces()            
 
         if(len(self.available) > 0):
-            self.UAV.open_link(self.available[0][0])
+            if(targetURI != None):
+                for i in range(len(self.available)):
+                    if(self.available[i][0] == targetURI):
+                        self.UAV.open_link(self.available[i][0])
+                        self.connectedToTargetUAV = True
+                    else:
+                        self.connectedToTargetUAV = False
+            else:
+                self.UAV.open_link(self.available[0][0])
+            
             while(self.UAV.is_connected() == False): time.sleep(0.1)
             self.MC = MotionCommander(self.UAV)
             #Create desired logging parameters
             self.UAVLogConfig = LogConfig(name = "UAVLog", period_in_ms=100)
-            self.UAVLogConfig.add_variable('pm.batteryLevel', 'float')
+            #self.UAVLogConfig.add_variable('pm.batteryLevel', 'float')
+            self.UAVLogConfig.add_variable('pm.vbat', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.x', 'float')
             self.UAVLogConfig.add_variable('stateEstimate.y', 'float')
+            self.UAVLogConfig.add_variable('stateEstimate.z', 'float')
             self.UAVLogConfig.add_variable('pm.chargeCurrent', 'float')
             #Add more variables here for logging as desired
 
             self.UAV.log.add_config(self.UAVLogConfig)
             if(self.UAVLogConfig.valid):
-                self.UAVLogConfig.data_received_cb.add_callback(self.printBatteryData)
+                self.UAVLogConfig.data_received_cb.add_callback(self._getUAVDataPacket)
                 self.UAVLogConfig.start()
             else:
                 logger.warning("Could not setup log configuration")
- 
-        
+
+        self._startTime = time.time() #For testing purposes
+        self._trialRun = 0
         #End of function
 
     def done(self):
@@ -151,37 +157,50 @@ class UAVController():
         Outputs: none
         Description: 
         """
-        retVal = ""
-        while(self._convertBatteryString(retVal) == -1):
-            retVal = self._batteryCaptureString.getvalue()[-5:]
-            retVal = self._convertBatteryString(retVal[:-1])
+        retVal = None
+        if(self._recentDataPacket != None and self._receivingDataPacket == False):
+            retVal = self._recentDataPacket["pm.vbat"]      
             
-        #End of function
         return retVal
 
-    def _convertBatteryString(self, valueString):
+    def getHeight(self):
         """
-        Function: _convertBatteryString
-        Purpose: A simply function to test if a given string can be converted to a floating point value
-        Inputs: valueString - a string that may or may not represent a floating point value
-        Outputs: outputVal - a floating point value if able to convert, -1 otherwise
+        Function: getCurrentHeight
+        Purpose: A function that reads the UAV height from a IOStream
+        Inputs: none
+        Outputs: none
+        Description: 
         """
-        outputVal = -1
-        try:
-            outputVal = float(valueString)
-            return outputVal
-        except ValueError:
-            return outputVal
-    
-    def printBatteryData(self, ident, data, logconfig):
+        retVal = None
+        if(self._recentDataPacket != None and self._receivingDataPacket == False):
+            retVal = self._recentDataPacket["stateEstimate.z"]
+
+        return retVal
+
+    def isCharging(self):
         """
-        Function: printBatteryData
-        Purpose: A function that allows the UAV to report battery level to a logging framework.
+        Function: getCurrentHeight
+        Purpose: A function that reads the UAV height from a IOStream
+        Inputs: none
+        Outputs: none
+        Description: 
+        """
+        retVal = None
+        if(self._recentDataPacket != None and self._receivingDataPacket == False):
+            retVal = self._recentDataPacket["pm.chargeCurrent"]
+
+        return retVal
+        
+    def _getUAVDataPacket(self, ident, data, logconfig):
+        """
+        Function: getUAVDataPacket
+        Purpose: Process a data packet received from the UAV
         Inputs: ident -
                 data -
                 logconfig -
         Outputs: None
         Description: A user should never call this function.
         """
-        logging.info("{1:.4}".format(ident, data["pm.batteryLevel"]))
-        
+        self._receivingDataPacket = True
+        self._recentDataPacket = data
+        self._receivingDataPacket = False 
