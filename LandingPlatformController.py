@@ -25,6 +25,7 @@ class LandingPlatformController():
                 minHoverHeight - (float) a value that determines what the minimum height the UAV is able to hover at, if below this height the UAV is instructed to land at current position. Measured in meters. 
                 maxHoverHeight - (float) a value that determines what the maximum height the UAV is able to hover at, any movements above this height will be ignored. Measured in meters.
                 landingPos - (float list) a list of three values that gives the x, y, z position of the landing target from the center of the camera. Measured in meters.
+                landingOffset - (float list) a list of three values that gives informs a final x,y,z position offset once the UAV is ready to land. Measured in meters from the landing position. 
                 cameraAccuracy - (int) a value that determines how many sample points will be gathered from the camera to determine UAV position.
                 cameraInFrameAccuracy - (int) a value that determines how many sample points will be gathered from the camera to determine if the UAV is within the frame.
                 cameraInFrameThreshold - (float) a value from 0 to 1 that represents the percentage of points that must be valid for the UAV to be determined as in the frame of the camera.
@@ -134,6 +135,13 @@ class LandingPlatformController():
         except (TypeError, KeyError):
             #If the dictionary value is not present, use defaults
             self._landingPos = [0, 0, 0]
+
+        #Define the final landing position offset coordinates in meters
+        try:
+            self._landingOffset = settings['landingOffset']
+        except (TypeError, KeyError):
+            #If the dictionary value is not present, use the landing position value
+            self._landingOffset = self._landingPos 
 
         #Begin definition of class tolerance/accuracy values
 
@@ -643,6 +651,9 @@ class LandingPlatformController():
 
         #Turn on the charging pad
         self._setPadPin(1)
+
+        #Perform final position adjustment
+        self._sendMovement(self._landingOffset[0], self._landingOffset[1], self._landingOffset[2])
         
         #Perform Landing Operations Here
         self._uav.land()
