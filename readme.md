@@ -8,7 +8,7 @@
   
   SD card >16GB
   
-  crazyflie radio module
+  Crazyradio PA
   
   OpenMV H7 (might work on others)
   
