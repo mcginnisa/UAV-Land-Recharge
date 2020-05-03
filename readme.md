@@ -30,7 +30,7 @@
  
 # Required Software:
 
-apibackup3.img.gz (not included in this repo because it is 6GB)
+[apibackup3.img.gz](https://mega.nz/file/qEw13ICT#oCqxXybzNOqPneVhp5gMI-YktHV_ouu1mNaRcVgblcE) (not included in this repo because it is 6GB)
 
 [OpenMV IDE](https://openmv.io/pages/download)
 
