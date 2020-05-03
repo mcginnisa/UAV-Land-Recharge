@@ -12,6 +12,8 @@
   
   OpenMV H7 (might work on others)
   
+  M12 lens with 940nm bandpass filter, and no infrared cut filter! (ours says xenocam on the side)
+  
   power supply for the RasPi
   
   ARAV power switch board
@@ -62,6 +64,8 @@ Connect the output USB port of the ARAV power switch board to the OpenMV camera
 Connect [GPIO physical pin 7](https://pinout.xyz/pinout/pin7_gpio4) to one of the EN pins on the ARAV power switch board
 
 Connect crazyradio PA to RasPi
+
+Ensure IR BPF lens is installed in OpenMV cam
  
 install the ARAV deck extension PCB, flow deck, and crazyflie Qi charger deck, and battery into the quadcopter
 
