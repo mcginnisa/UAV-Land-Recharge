@@ -1,8 +1,3 @@
-# In Memory Basic Frame Differencing Example
-#
-# This example demonstrates using frame differencing with your OpenMV Cam. It's
-# called basic frame differencing because there's no background image update.
-# So, as time passes the background image may change resulting in issues.
 
 import sensor, image, pyb, os, time
 
@@ -23,12 +18,7 @@ sensor.set_auto_gain(False)
 
 clock = time.clock() # Tracks FPS.
 
-# Take from the main frame buffer's RAM to allocate a second frame buffer.
-# There's a lot more RAM in the frame buffer than in the MicroPython heap.
-# However, after doing this you have a lot less RAM for some algorithms...
-# So, be aware that it's a lot easier to get out of RAM issues now. However,
-# frame differencing doesn't use a lot of the extra space in the frame buffer.
-# But, things like AprilTags do and won't work if you do this...
+
 #extra_fb = sensor.alloc_extra_fb(sensor.width(), sensor.height(), sensor.GRAYSCALE)
 extra_fb = sensor.alloc_extra_fb(width_frame, height_frame, sensor.GRAYSCALE)
 
@@ -62,15 +52,3 @@ while(True):
         print(str(xpos) + ',' + str(ypos))
 
     #img.find_edges(image.EDGE_CANNY, threshold=(80, 100))
-
-
-    #hist = img.get_histogram()
-    # This code below works by comparing the 99th percentile value (e.g. the
-    # non-outlier max value against the 90th percentile value (e.g. a non-max
-    # value. The difference between the two values will grow as the difference
-    # image seems more pixels change.
-    #diff = hist.get_percentile(0.99).l_value() - hist.get_percentile(0.90).l_value()
-    #triggered = diff > TRIGGER_THRESHOLD
-
-    #print(clock.fps(), triggered) # Note: Your OpenMV Cam runs about half as fast while
-    # connected to your computer. The FPS should increase once disconnected.
