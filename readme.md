@@ -65,7 +65,7 @@ Connect [GPIO physical pin 7](https://pinout.xyz/pinout/pin7_gpio4) to one of th
 
 Connect crazyradio PA to RasPi
 
-Ensure IR BPF lens is installed in OpenMV cam
+Insure IR BPF lens is installed in OpenMV cam
  
 install the ARAV deck extension PCB, flow deck, and crazyflie Qi charger deck, and battery into the quadcopter
 
