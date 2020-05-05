@@ -38,7 +38,7 @@
 
 # Recipe
 
-Flash ir_track2.py onto the OpenMV.
+Install OpenMV IDE and flash ir_track2.py onto the OpenMV. (Tools->Save open script to OpenMV cam.) [Discussion.](http://forums.openmv.io/viewtopic.php?t=841)
 
 burn the raspi image onto the SD card with a command similar to (if your SD card is mounted at sdc)
 
