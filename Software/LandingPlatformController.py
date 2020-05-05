@@ -1,3 +1,48 @@
+"""                                                    
+
+      .o.       ooooooooo.         .o.       oooooo     oooo 
+     .888.      `888   `Y88.      .888.       `888.     .8'  
+    .8"888.      888   .d88'     .8"888.       `888.   .8'   
+   .8' `888.     888ooo88P'     .8' `888.       `888. .8'    
+  .88ooo8888.    888`88b.      .88ooo8888.       `888.8'     
+ .8'     `888.   888  `88b.   .8'     `888.       `888'      
+o88o     o8888o o888o  o888o o88o     o8888o       `8'       
+                                                             
+                                                             
+File:      LandingPlatformController
+Purpose:   This file contains the implementation of the Landing Platform Controller
+           that is demonstrated by Anthony Aboumrad, Alexander McGinnis, and Joseph Haun
+           for the Sonoma State University Senior Design Course on May 2020. The class
+           itself allows for the programmatic control of a generalized UAV platform
+           so long as the controller class exposes several key functions as detailed in
+           the UAVController class. This class allows for a user to pass in a large settings
+           dictionary datatype that will reconfigure available settings. See the __init__
+           description for further details on particular settings and their purpose. This
+           class was originally designed to run on a RaspberryPi 3B+ in conjuction with an
+           OpenMV H7 camera module and a Bitcraze Crazyflie 2.1. To swap the drone, a user must
+           pass in a Python object that contains the appropriate member functions their particular
+           UAV. To swap the camera, the user only needs to modify the camera software such that it outputs
+           a particular value via serial connection so that the __init__ function is able to
+           dynamically locate the particular serial connection in use. 
+Author:    Joseph Haun, Alexander McGinnis, Anthony Aboumrad
+Created:   12-1-2019
+Modified:  5-5-2020
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+  MA  02110-1301, USA.
+
+"""
 import serial
 import sys
 import glob
@@ -9,44 +54,44 @@ class LandingPlatformController():
     
     def __init__(self, settings=dict(), debug=False):
         """
-        Function: __init__
-        Purpose: Setup the LandingPlatformController class
-        Inputs: debug - a boolean value that indicates whether debug messages and actions are taken. If false, systems will not report data values.  
-                settings - a relational array that contains various parameters that can be changed by the user
-        Outputs: None
+        Function:    __init__
+        Purpose:     Setup the LandingPlatformController class
+        Inputs:      debug - a boolean value that indicates whether debug messages and actions are taken. If false, systems will not report data values.  
+                     settings - a relational array that contains various parameters that can be changed by the user
+        Outputs:     None
         Description: Recognized Settings Dictionary Values
-                debugFile - (string) a file path that will be used to save all regularly output debug statements, a value here will ignore the debug option.
-                flightPathFile - (string) a file paht that contains x,y,z,V values that will be used to control the UAV for a flight routine.
-                cameraPowerPin - (int) a value that will be used by the RaspberryPi to turn the camera on/off.
-                padPowerPin - (int) a value that will be used by the single-board computer to turn the Qi charging pad on/off.
-                uav - (Python Class Object) a class that has
-                velocity - (float) a value that will be used by default to control the UAV velocity throughout operations. Measured in meters per second.
-                hoverHeight - (float) a value that sets the beginning hover height for after launch. Measured in meters.
-                minHoverHeight - (float) a value that determines what the minimum height the UAV is able to hover at, if below this height the UAV is instructed to land at current position. Measured in meters. 
-                maxHoverHeight - (float) a value that determines what the maximum height the UAV is able to hover at, any movements above this height will be ignored. Measured in meters.
-                landingPos - (float list) a list of three values that gives the x, y, z position of the landing target from the center of the camera. Measured in meters.
-                landingOffset - (float list) a list of three values that gives informs a final x,y,z position offset once the UAV is ready to land. Measured in meters from the landing position. 
-                cameraAccuracy - (int) a value that determines how many sample points will be gathered from the camera to determine UAV position.
-                cameraInFrameAccuracy - (int) a value that determines how many sample points will be gathered from the camera to determine if the UAV is within the frame.
-                cameraInFrameThreshold - (float) a value from 0 to 1 that represents the percentage of points that must be valid for the UAV to be determined as in the frame of the camera.
-                coordTolerance - (float) a positive value that is used by the landing algorithm to determine if the UAV position is near the desired coordinates. Zero indicates that the coordinates must match exactly.
-                onTargetFactor - (int)  a positive value that is used to determine the width factor for if the UAV is over the target point. See _uavOnTarget function for more details.
-                onTargetOffset - (float) a value that is used to control the offset in the Z-dimension of the accuracy horn. See _uavOnTarget function for more details.
-                focalLength - (float) a value that represents the camera focal length per the datasheet. Is used to convert the camera pixel values into world coordinates. Measured in meters.
-                xImage - (float) a value that represents the X-dimension size of the camera per the datasheet. Is used to convert the camera pixel values into world coordinates. Measured in meters.
-                yImage - (float) a value that represents the Y-dimension size of the camera per the datasheet. Is used to convert the camera pixel values into world coordinates. Measured in meters.
-                xSensor - (int) a value that represents the X-dimension pixel count for the sensor per the datasheet. Is used to convert the camera pixel values into world coordinates.
-                ySensor - (int) a value that represents the Y-dimension pixel count for the sensor per the datasheet. Is used to convert the camera pixel values into world coordinates.
-                xActive - (int) a value that represents the number of active sensors in the X-dimension. Is used to convert the camera pixel values into world coordinates.
-                yActive - (int) a value that represents the number of active sensors in the Y-dimension. Is used to convert the camera pixel values into world coordinates.
-                xRange - (int) a value that defines the size of the frame in the X-dimension for the camera, per the datasheet. Is used to convert the camera pixel values into world coordinates.
-                yRange - (int) a value that defines the size of the frame in the Y-dimension for the camera, per the datasheet. Is used to convert the camera pixel values into world coordinates.
-                xOff - (int) a value that represents the offset of the camera zero coordiante in the X-dimension. Is used to convert the camera pixel values into world coordinates.
-                yOff - (int) a value that represents the offset of the camera zero coordinate in the Y-dimension. Is used to conver the camera pixel values into world coordinates.
-                cameraInitValue - (string) the default string value that is output by the camera to enable setup procedures.
-                cameraOutOfFrameValue - (string) the default value that is output by the camera when the UAV is not detected within the frame.
-                cameraStartString - (string) the value that is sent to the camera so that it begins generating data points.
-                serialLimiters - (char list) a list of character values that are used to parse a data packet from the camera. 
+                     debugFile - (string) a file path that will be used to save all regularly output debug statements, a value here will ignore the debug option.
+                     flightPathFile - (string) a file paht that contains x,y,z,V values that will be used to control the UAV for a flight routine.
+                     cameraPowerPin - (int) a value that will be used by the RaspberryPi to turn the camera on/off.
+                     padPowerPin - (int) a value that will be used by the single-board computer to turn the Qi charging pad on/off.
+                     uav - (Python Class Object) a class that has
+                     velocity - (float) a value that will be used by default to control the UAV velocity throughout operations. Measured in meters per second.
+                     hoverHeight - (float) a value that sets the beginning hover height for after launch. Measured in meters.
+                     minHoverHeight - (float) a value that determines what the minimum height the UAV is able to hover at, if below this height the UAV is instructed to land at current position. Measured in meters. 
+                     maxHoverHeight - (float) a value that determines what the maximum height the UAV is able to hover at, any movements above this height will be ignored. Measured in meters.
+                     landingPos - (float list) a list of three values that gives the x, y, z position of the landing target from the center of the camera. Measured in meters.
+                     landingOffset - (float list) a list of three values that gives informs a final x,y,z position offset once the UAV is ready to land. Measured in meters from the landing position. 
+                     cameraAccuracy - (int) a value that determines how many sample points will be gathered from the camera to determine UAV position.
+                     cameraInFrameAccuracy - (int) a value that determines how many sample points will be gathered from the camera to determine if the UAV is within the frame.
+                     cameraInFrameThreshold - (float) a value from 0 to 1 that represents the percentage of points that must be valid for the UAV to be determined as in the frame of the camera.
+                     coordTolerance - (float) a positive value that is used by the landing algorithm to determine if the UAV position is near the desired coordinates. Zero indicates that the coordinates must match exactly.
+                     onTargetFactor - (int)  a positive value that is used to determine the width factor for if the UAV is over the target point. See _uavOnTarget function for more details.
+                     onTargetOffset - (float) a value that is used to control the offset in the Z-dimension of the accuracy horn. See _uavOnTarget function for more details.
+                     focalLength - (float) a value that represents the camera focal length per the datasheet. Is used to convert the camera pixel values into world coordinates. Measured in meters.
+                     xImage - (float) a value that represents the X-dimension size of the camera per the datasheet. Is used to convert the camera pixel values into world coordinates. Measured in meters.
+                     yImage - (float) a value that represents the Y-dimension size of the camera per the datasheet. Is used to convert the camera pixel values into world coordinates. Measured in meters.
+                     xSensor - (int) a value that represents the X-dimension pixel count for the sensor per the datasheet. Is used to convert the camera pixel values into world coordinates.
+                     ySensor - (int) a value that represents the Y-dimension pixel count for the sensor per the datasheet. Is used to convert the camera pixel values into world coordinates.
+                     xActive - (int) a value that represents the number of active sensors in the X-dimension. Is used to convert the camera pixel values into world coordinates.
+                     yActive - (int) a value that represents the number of active sensors in the Y-dimension. Is used to convert the camera pixel values into world coordinates.
+                     xRange - (int) a value that defines the size of the frame in the X-dimension for the camera, per the datasheet. Is used to convert the camera pixel values into world coordinates.
+                     yRange - (int) a value that defines the size of the frame in the Y-dimension for the camera, per the datasheet. Is used to convert the camera pixel values into world coordinates.
+                     xOff - (int) a value that represents the offset of the camera zero coordiante in the X-dimension. Is used to convert the camera pixel values into world coordinates.
+                     yOff - (int) a value that represents the offset of the camera zero coordinate in the Y-dimension. Is used to conver the camera pixel values into world coordinates.
+                     cameraInitValue - (string) the default string value that is output by the camera to enable setup procedures.
+                     cameraOutOfFrameValue - (string) the default value that is output by the camera when the UAV is not detected within the frame.
+                     cameraStartString - (string) the value that is sent to the camera so that it begins generating data points.
+                     serialLimiters - (char list) a list of character values that are used to parse a data packet from the camera. 
         
         
         """
@@ -315,10 +360,10 @@ class LandingPlatformController():
 
     def _getUAVPosition(self):
         """
-        Function: _getUAVPosition
-        Purpose: Get the most up-to-date UAV position in rectangular coordinates
-        Inputs: None
-        Outputs: _uavPos - a list floasts that represent the x, y, z position of the UAV
+        Function:    _getUAVPosition
+        Purpose:     Get the most up-to-date UAV position in rectangular coordinates
+        Inputs:      None
+        Outputs:     _uavPos - a list floasts that represent the x, y, z position of the UAV
         Description: This function attempts to grab a number of data points, determined by cameraAccuracy value, and convert them to world coordinates.
                      These coordinates are then averaged to reduce positional errors. Once averaged, they are placed into the uavPos data member which
                      is then reported to the calling function. 
@@ -382,10 +427,10 @@ class LandingPlatformController():
 
     def _uavInFrame(self):
         """
-        Function: _uavInFrame
-        Purpose: Determine if the UAV is within the frame of the camera
-        Inputs: None
-        Outputs: a boolean value indicating if the UAV is within the frame
+        Function:    _uavInFrame
+        Purpose:     Determine if the UAV is within the frame of the camera
+        Inputs:      None
+        Outputs:     a boolean value indicating if the UAV is within the frame
         Description: This function parses camera data points in a similar manner to _getUAVPosition, but forgoes the conversion to world coordinates. So long as the coordinates are not
                      an error coordinate, 900 and above, they are considered a valid position value. If the ratio of valid to invalid position values is greater than the cameraInFrameThreshold
                      value, the function will report True. Otherwise, it will report false to the caller. 
@@ -439,14 +484,14 @@ class LandingPlatformController():
     
     def _pixelConversion(self, x_pixel, y_pixel, distance):
         """
-        Function: _pixelConversion
-        Purpose: Convert pixel coordinates into world coordinates
-        Inputs: x_pixel - an integer value denoting the x-coordinate of the UAV
-                y_pixel - an integer value denoting the y-coordiante of the UAV
-                distance - a floating point value denoting the distance in meters of the UAV from the camera
-        Outputs: a tuple of x,y
-                 x - a floating point value denoting the x-coordinate of the UAV in the world frame
-                 y - a floating point value denoting the y-coordinate of the UAV in the world frame
+        Function:    _pixelConversion
+        Purpose:     Convert pixel coordinates into world coordinates
+        Inputs:      x_pixel - an integer value denoting the x-coordinate of the UAV
+                     y_pixel - an integer value denoting the y-coordiante of the UAV
+                     distance - a floating point value denoting the distance in meters of the UAV from the camera
+        Outputs:     a tuple of x,y
+                     x - a floating point value denoting the x-coordinate of the UAV in the world frame
+                     y - a floating point value denoting the y-coordinate of the UAV in the world frame
         Description: This function uses the distance from the camera, focal length, pixel size, and lengths of the sensors to convert pixel coordinates
                      to world coordinates. 
         """
@@ -459,10 +504,10 @@ class LandingPlatformController():
 
     def _calculateOffset(self):
         """
-        Function: _calculateOffset
-        Purpose: Calculate the offset distance of the UAV to the desired landing point, assumes the position is up to date
-        Inputs: None
-        Outputs: offset - an array of values representing <dx, dy, dz> in meters 
+        Function:    _calculateOffset
+        Purpose:     Calculate the offset distance of the UAV to the desired landing point, assumes the position is up to date
+        Inputs:      None
+        Outputs:     offset - an array of values representing <dx, dy, dz> in meters 
         Description: This functions makes use of the landing platform position determined by the user to calculate the offset
                      given the current UAV position. This assumes that the UAV position has been updated recently. Otherwise,
                      it will be an inaccurate offset value. 
@@ -475,10 +520,10 @@ class LandingPlatformController():
 
     def _uavGetHeight(self):
         """
-        Function: _uavGetHeight
-        Purpose: Get the UAV z-coordinate in the world frame
-        Inputs: None
-        Outputs: a floating point value representing the z-coordinate 
+        Function:    _uavGetHeight
+        Purpose:     Get the UAV z-coordinate in the world frame
+        Inputs:      None
+        Outputs:     a floating point value representing the z-coordinate 
         Description: This function uses the UAV controller object's getHeight function to grab the most up-to-date height value.
         """
         self._hoverHeight = self._uav.getHeight()
@@ -486,12 +531,12 @@ class LandingPlatformController():
 
     def _sendMovement(self, xDis, yDis, zDis):
         """
-        Function: _sendMovement
-        Purpose: Instruct the UAV to move to certain coordinates
-        Inputs: xDis - a floating point value denoting the distance, in meters, to move along the x-axis
-                yDis - a floating point value denoting the distance, in meters, to move along the y-axis
-                zDis - a floating point value denoting the distance, in meters, to move along the z-axis
-        Outputs: None
+        Function:    _sendMovement
+        Purpose:     Instruct the UAV to move to certain coordinates
+        Inputs:      xDis - a floating point value denoting the distance, in meters, to move along the x-axis
+                     yDis - a floating point value denoting the distance, in meters, to move along the y-axis
+                     zDis - a floating point value denoting the distance, in meters, to move along the z-axis
+        Outputs:     None
         Description: This function checks if a movement vector is not zero, then sends the x, y, z distance values to the UAV
                      via the UAV objects move function. 
         """
@@ -506,11 +551,11 @@ class LandingPlatformController():
 
     def _sendToHome(self, xPos, yPos):
         """
-        Function: _sendToHome
-        Purpose: Instruct the UAV to move to certain coordinates
-        Inputs: xPos - a floating point value denoting the x-dimension coordinate
-                yPos - a floating point value denoting the y-dimension coordinate
-        Outputs: None
+        Function:    _sendToHome
+        Purpose:     Instruct the UAV to move to certain coordinates
+        Inputs:      xPos - a floating point value denoting the x-dimension coordinate
+                     yPos - a floating point value denoting the y-dimension coordinate
+        Outputs:     None
         Description: This function uses the provided position values to calculate a distance that the UAV needs to move to
                      be centered over the landing position. In the process of calculating the distances, the current UAV frame
                      offset angle is used to mathematically transform the world coordinates into UAV frame coordinates that are
@@ -549,12 +594,15 @@ class LandingPlatformController():
     
     def engageFlightRoutine(self):
         """
-        Function: engageFlightRoutine
-        Purpose: Instruct the UAV to move upon a pre-determined flight path and accomplish some goal.
-        Inputs: None
-        Outputs: None
+        Function:    engageFlightRoutine
+        Purpose:     Instruct the UAV to move upon a pre-determined flight path and accomplish some goal.
+        Inputs:      None
+        Outputs:     None
         Description: This function moves the UAV upon a pre-determined flight path, whether or not a flight plan is set,
-                     and checks the battery voltage to determine if the UAV should be landing.
+                     and checks the battery voltage to determine if the UAV should be landing. 
+        Note:        Currently, this function is incredibly limited. The UAV will only ascend and then
+                     attempt to land on the target point. It is recommended that it be rewritten for any
+                     potential applications. 
         """
         if(self._flightPlan == None):
             print("LPC: engageFlightRoutine - Beginning", file=self._debugFile)
@@ -573,10 +621,10 @@ class LandingPlatformController():
 
     def done(self):
         """
-        Function: done
-        Purpose: Halt all class activities
-        Inputs: None
-        Outputs: None
+        Function:    done
+        Purpose:     Halt all class activities
+        Inputs:      None
+        Outputs:     None
         Description: See Purpose.
         """
         self._uav.land()
@@ -587,10 +635,10 @@ class LandingPlatformController():
     
     def _performLandingSequence(self):
         """
-        Function: _performLandingSequence
-        Purpose: Align UAV with desired coordinates, once aligned safely land the UAV
-        Inputs: None
-        Outputs: None
+        Function:    _performLandingSequence
+        Purpose:     Align UAV with desired coordinates, once aligned safely land the UAV
+        Inputs:      None
+        Outputs:     None
         Description: This function determines the current UAV position, then calculates the desired position.
                      The desired position is then used to move the UAV, after the movement completes the actual
                      UAV position is determined. The movement vectors are compared for magnitude, if they are within
@@ -661,10 +709,10 @@ class LandingPlatformController():
 
     def _uavOnTarget(self, offsetVector):
         """
-        Function: _uavOnTarget
-        Purpose: Determine if the UAV is within the target area for its specific height
-        Inputs: offsetVector - a list of floating point values representing the <dX, dY> necessary for the UAV to move to reach the center point
-        Outputs: a boolean value indicating whether the UAV is within the target area for its specific height
+        Function:    _uavOnTarget
+        Purpose:     Determine if the UAV is within the target area for its specific height
+        Inputs:      offsetVector - a list of floating point values representing the <dX, dY> necessary for the UAV to move to reach the center point
+        Outputs:     a boolean value indicating whether the UAV is within the target area for its specific height
         Description: _uavOnTarget determines if the UAV is within the appropriate offset from the target point by calculating the offset vector
                      magnitude and comparing it to a value calculated by solving the function h = log_{k}(r) for the radius, r, where h is the 
                      current height of the UAV and K is a scaling factor that can be adjusted depending on the desired function. If the offset
@@ -685,10 +733,10 @@ class LandingPlatformController():
 
     def _uavInBoundary(self, position):
         """
-        Function: _uavOnTarget
-        Purpose: Determine if the UAV is within the target area for its specific height
-        Inputs: positionVector - a list of floating point values representing the <x, y> position of the UAV
-        Outputs: a boolean value indicating whether the UAV is within the boundary area for its specific height
+        Function:    _uavOnTarget
+        Purpose:     Determine if the UAV is within the target area for its specific height
+        Inputs:      positionVector - a list of floating point values representing the <x, y> position of the UAV
+        Outputs:     a boolean value indicating whether the UAV is within the boundary area for its specific height
         Description: This function uses the given position vector to determine if the UAV is within the boundary
                      for its current height. This is accomplished by using the pixel conversion function to determine
                      the distance at height for pixel coordinate <255,255>. 
@@ -709,12 +757,12 @@ class LandingPlatformController():
 
     def _createCoordinateTransform(self, startPosition, expectedPosition, endPosition):
         """
-        Function: _createCoordinateTransform
-        Purpose: Calculate the necessary angle to allow for UAV coordinates to be transformed from camera coordinates
-        Inputs: startPosition - a list of values indicating the starting <x, y> coordinates of the UAV in the view of the camera
-                expectedPosition - a list of values indicating expected <x, y> coordinates of the UAV in the view of the camera
-                actualVector - a list of values indicating the actual <x, y> coordinates of the UAV in the view of the camera
-        Outputs: The offset angle in degrees
+        Function:    _createCoordinateTransform
+        Purpose:     Calculate the necessary angle to allow for UAV coordinates to be transformed from camera coordinates
+        Inputs:      startPosition - a list of values indicating the starting <x, y> coordinates of the UAV in the view of the camera
+                     expectedPosition - a list of values indicating expected <x, y> coordinates of the UAV in the view of the camera
+                     actualVector - a list of values indicating the actual <x, y> coordinates of the UAV in the view of the camera
+        Outputs:     The offset angle in degrees
         Description: This function calculates the UAV frame offset angle by using atan2. 
         """
         self._uavOffsetAngle = math.atan2(expectedPosition[0]*endPosition[1] - expectedPosition[1]*endPosition[0], expectedPosition[0]*endPosition[0] - expectedPosition[1]*endPosition[1])
@@ -722,14 +770,14 @@ class LandingPlatformController():
                         
     def _alignUAV(self, startPosition, expectedPosition, endPosition):
         """
-        Function: _alignUAV
-        Purpose: Reduce the UAV's offset rotation to near zero from perspective of camera
-                 by calculating the angle between an expected move and the actual move
-                 using the law of cosines. 
-        Inputs: startPosition - a list of values indicating the starting <x, y> coordinates of the UAV in the view of the camera
-                expectedPosition - a list of values indicating expected <x, y> coordinates of the UAV in the view of the camera
-                actualVector - a list of values indicating the actual <x, y> coordinates of the UAV in the view of the camera
-        Outputs: the angle, in degrees, by which the UAV is offset
+        Function:    _alignUAV
+        Purpose:     Reduce the UAV's offset rotation to near zero from perspective of camera
+                     by calculating the angle between an expected move and the actual move
+                     using the law of cosines. 
+        Inputs:      startPosition - a list of values indicating the starting <x, y> coordinates of the UAV in the view of the camera
+                     expectedPosition - a list of values indicating expected <x, y> coordinates of the UAV in the view of the camera
+                     actualVector - a list of values indicating the actual <x, y> coordinates of the UAV in the view of the camera
+        Outputs:     the angle, in degrees, by which the UAV is offset
         Description: _alignUAV determines the angle the UAV is rotated by, when compared with the camera's world frame, and
                      rotates the UAV to better align with the camera. It does this by solving for the angle, theta, in the law of cosines form
                      a^2 = b^2 + c^2 - b*c*cos(theta) where a is the magnitude of the vector determined by the difference of the expected and 
@@ -787,22 +835,23 @@ class LandingPlatformController():
     
     def _getBatteryLevel(self):        
         """
-        Function: _getBatteryLevel
-        Purpose: Query the UAV to determine the battery percentage
-        Inputs: None
-        Outputs: a floating point value denote the battery percentage from zero to one hundred
+        Function:    _getBatteryLevel
+        Purpose:     Query the UAV to determine the battery percentage
+        Inputs:      None
+        Outputs:     a floating point value denote the battery percentage from zero to one hundred
         Description: Makes use of the UAV controller's built-in function to query the battery level
         """
         return self._uav.getBatteryLevel()
    
     def _getCameraSerialConnection(self, expectedVals):
         """
-        Function: _getAllSerialPorts
-        Purpose: Find the currently connected camera module by analyzing a series of serial values
-        Inputs: expectedVals - an array of values that are expected to come from the serial connection
-                offsetVal - an integer representing extra characters to pull in that are not part of expected values
-        Outputs: A string that represents the port that has the camera connection
-        Note: Performs a priming read which will discard the first value sent.
+        Function:    _getAllSerialPorts
+        Purpose:     Find the currently connected camera module by analyzing a series of serial values
+        Inputs:      expectedVals - an array of values that are expected to come from the serial connection
+                     offsetVal - an integer representing extra characters to pull in that are not part of expected values
+        Outputs:     A string that represents the port that has the camera connection
+        Description: Finds the camera serial connection based on the expected values. 
+        Note:        Performs a priming read which will discard the first value sent.
         """
                
         #Create a blank camera port
@@ -831,11 +880,11 @@ class LandingPlatformController():
     def _getAllSerialPorts(self):
         """
         Function: _getAllSerialPorts
-        Purpose: Find all available serial ports on the current machine regardless of operating system
-        Inputs: none
-        Outputs: array of all found ports represented as strings
-        Credit: Thomas, https://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
-        Edits: Joseph Haun
+        Purpose:  Find all available serial ports on the current machine regardless of operating system
+        Inputs:   none
+        Outputs:  array of all found ports represented as strings
+        Credit:   Thomas, https://stackoverflow.com/questions/12090503/listing-available-com-ports-with-python
+        Edits:    Joseph Haun
         """
         #Create blank arrays for eventual contents
         availablePorts = []
@@ -868,9 +917,9 @@ class LandingPlatformController():
     def _setCameraPin(self, state):
         """
         Function: _toggleCameraPower
-        Purpose: Toggles the RaspberryPi pin that corresponds to the power control for camera
-        Inputs: state - an integer value representing on (1) or off (0)
-        Outputs: none
+        Purpose:  Toggles the RaspberryPi pin that corresponds to the power control for camera
+        Inputs:   state - an integer value representing on (1) or off (0)
+        Outputs:  none
         """
         GPIO.output(self._cameraPowerPin, state)
         return
@@ -878,9 +927,9 @@ class LandingPlatformController():
     def _setPadPin(self, state):
         """
         Function: _togglePadPower
-        Purpose: Toggles the RaspberryPi pin that corresponds to the power control for Qi pad
-        Inputs: state - an integer value representing on (1) or off (0)
-        Outputs: none
+        Purpose:  Toggles the RaspberryPi pin that corresponds to the power control for Qi pad
+        Inputs:   state - an integer value representing on (1) or off (0)
+        Outputs:  none
         """
         GPIO.output(self._padPowerPin, state)
         return

@@ -1,3 +1,21 @@
+"""
+
+      .o.       ooooooooo.         .o.       oooooo     oooo 
+     .888.      `888   `Y88.      .888.       `888.     .8'  
+    .8"888.      888   .d88'     .8"888.       `888.   .8'   
+   .8' `888.     888ooo88P'     .8' `888.       `888. .8'    
+  .88ooo8888.    888`88b.      .88ooo8888.       `888.8'     
+ .8'     `888.   888  `88b.   .8'     `888.       `888'      
+o88o     o8888o o888o  o888o o88o     o8888o       `8'       
+                                                             
+File:     log_bell
+Purpose:  Create a logarithmic horn in a 3D graph for use in diagrams/presentations
+Creator:  Alexander McGinnis
+Modifier: Joseph Haun
+Updated:  5-5-2020
+
+"""
+
 from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 from matplotlib import cm

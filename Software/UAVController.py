@@ -1,3 +1,39 @@
+"""                                                    
+
+      .o.       ooooooooo.         .o.       oooooo     oooo 
+     .888.      `888   `Y88.      .888.       `888.     .8'  
+    .8"888.      888   .d88'     .8"888.       `888.   .8'   
+   .8' `888.     888ooo88P'     .8' `888.       `888. .8'    
+  .88ooo8888.    888`88b.      .88ooo8888.       `888.8'     
+ .8'     `888.   888  `88b.   .8'     `888.       `888'      
+o88o     o8888o o888o  o888o o88o     o8888o       `8'       
+                                                             
+                                                             
+File:      UAVController
+Purpose:   This file contains the implementation of a wrapper class that interfaces
+           with a Bitcraze Crazyflie 2.1 using the Motion Commander classes and
+           logging framework provided by Bitcraze. This class is used in the LandingPlatformController
+           class to provide necessary operations on the UAV platform. Key functions to
+           be enabled for the LandingPlatformController class are: done, launch, land,
+           getBatteryLevel, rotate, move, getHeight, and isCharging.
+Author:    Joseph Haun, Alexander McGinnis, Anthony Aboumrad
+Created:   12-1-2019
+Modified:  5-5-2020
+
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+  MA  02110-1301, USA.
+"""
 import logging
 import time
 import io
