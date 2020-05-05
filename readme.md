@@ -34,7 +34,7 @@
 
 [OpenMV IDE](https://openmv.io/pages/download)
 
-[ir_track2.py](https://github.com/mcginnisa/UAV-Land-Recharge/blob/master/camera/ir_track2.py)
+[ir_track2.py](https://github.com/mcginnisa/UAV-Land-Recharge/blob/master/Software/OpenMV/ir_track2.py)
 
 # Recipe
 
