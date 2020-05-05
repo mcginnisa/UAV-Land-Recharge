@@ -46,7 +46,7 @@ burn the raspi image onto the SD card with a command similar to (if your SD card
 gunzip --stdout -v /media/main/Windows/Users/main/Desktop/apibackup3.img.gz | sudo dd bs=4M of=/dev/sdc
 ```
 
-(if the above SD card image does not work for you, you can burn [ubuntu mate](https://ubuntu-mate.org/) to an SD card, and run [ARAV-Setup.sh](https://github.com/mcginnisa/UAV-Land-Recharge/blob/master/ARAV-Setup.sh) as an alternative option) 
+*if the above SD card image does not work for you, you can burn [ubuntu mate](https://ubuntu-mate.org/) to an SD card, and run [ARAV-Setup.sh](https://github.com/mcginnisa/UAV-Land-Recharge/blob/master/ARAV-Setup.sh) as an alternative option* 
 
 Insert SD card into RasPi and connect it to power
 
